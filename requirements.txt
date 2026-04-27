@@ -1,0 +1,5 @@
+# MCP Server dependencies
+mcp>=1.0.0
+
+# Note: ibm-watsonx-orchestrate is NOT included here as it's platform-managed
+# The watsonx Orchestrate platform provides this package automatically

@@ -1,0 +1,92 @@
+{
+  "CUST-001": {
+    "customer_id": "CUST-001",
+    "pin": "1234",
+    "first_name": "Emma",
+    "last_name": "Thompson",
+    "email": "emma.thompson@email.co.uk",
+    "phone": "+44 20 7946 0123",
+    "mobile": "+44 7700 900123",
+    "date_of_birth": "1985-06-15",
+    "ni_number_full": "AB123456D",
+    "ni_number_last_4": "456D",
+    "address": {
+      "street": "42 Kensington High Street",
+      "city": "London",
+      "postcode": "W8 5SA",
+      "country": "United Kingdom"
+    },
+    "customer_since": "2018-03-15",
+    "customer_tier": "Gold",
+    "preferred_language": "English",
+    "employment": {
+      "status": "Employed",
+      "employer": "Digital Solutions Ltd",
+      "position": "Senior Software Engineer",
+      "annual_income": 65000,
+      "employment_length_years": 6
+    },
+    "credit_score": 742,
+    "risk_profile": "Low"
+  },
+  "CUST-002": {
+    "customer_id": "CUST-002",
+    "pin": "5678",
+    "first_name": "James",
+    "last_name": "Patel",
+    "email": "james.patel@patelconsulting.co.uk",
+    "phone": "+44 20 7946 0456",
+    "mobile": "+44 7700 900456",
+    "date_of_birth": "1978-11-22",
+    "ni_number_full": "CD567890C",
+    "ni_number_last_4": "890C",
+    "address": {
+      "street": "15 Canary Wharf",
+      "city": "London",
+      "postcode": "E14 5AB",
+      "country": "United Kingdom"
+    },
+    "customer_since": "2015-08-20",
+    "customer_tier": "Platinum",
+    "preferred_language": "English",
+    "employment": {
+      "status": "Self-Employed",
+      "employer": "Patel Consulting Ltd",
+      "position": "Managing Director",
+      "annual_income": 125000,
+      "employment_length_years": 12
+    },
+    "credit_score": 785,
+    "risk_profile": "Low"
+  },
+  "CUST-003": {
+    "customer_id": "CUST-003",
+    "pin": "9012",
+    "first_name": "Sophie",
+    "last_name": "Williams",
+    "email": "sophie.williams@email.co.uk",
+    "phone": "+44 161 496 0789",
+    "mobile": "+44 7700 900789",
+    "date_of_birth": "1995-03-08",
+    "ni_number_full": "EF901234B",
+    "ni_number_last_4": "234B",
+    "address": {
+      "street": "78 Deansgate",
+      "city": "Manchester",
+      "postcode": "M3 2BW",
+      "country": "United Kingdom"
+    },
+    "customer_since": "2020-01-10",
+    "customer_tier": "Silver",
+    "preferred_language": "English",
+    "employment": {
+      "status": "Employed",
+      "employer": "Creative Marketing Ltd",
+      "position": "Marketing Coordinator",
+      "annual_income": 32000,
+      "employment_length_years": 3
+    },
+    "credit_score": 680,
+    "risk_profile": "Medium"
+  }
+}
