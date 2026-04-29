@@ -85,7 +85,37 @@ orchestrate toolkits list
 echo ""
 
 echo "🔧 Verifying tool imports..."
-orchestrate tools list | grep -E "(core-banking|fraud-detection|loan-processing)" || echo "  ℹ️  Tools will be available after MCP servers start"
+echo "  ⏳ Waiting for MCP servers to start and register tools..."
+sleep 10  # Give MCP servers time to start and register tools
+
+# Verify tools are available
+MAX_RETRIES=6
+RETRY_COUNT=0
+TOOLS_READY=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if orchestrate tools list 2>/dev/null | grep -q "loan-processing:check_credit_score"; then
+        echo "  ✓ MCP tools are ready"
+        TOOLS_READY=true
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "  ⏳ Waiting for tools to register (attempt $RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 5
+        fi
+    fi
+done
+
+if [ "$TOOLS_READY" = false ]; then
+    echo "  ⚠️  WARNING: MCP tools not yet available"
+    echo "  💡 The workflow import may fail. If it does:"
+    echo "     1. Wait 30 seconds for MCP servers to fully start"
+    echo "     2. Run: orchestrate tools import -k flow -f tools/loan_approval_workflow.py"
+    echo ""
+fi
+
+orchestrate tools list | grep -E "(core-banking|fraud-detection|loan-processing)" || echo "  ℹ️  Some tools may still be starting"
 echo ""
 
 echo "🛡️ Step 3: Importing Guardrail Plugins..."
@@ -119,12 +149,20 @@ echo "🔄 Step 4: Importing Agentic Workflow..."
 echo "-----------------------------------"
 
 echo "Importing Loan Approval Workflow..."
-orchestrate tools import -k flow -f tools/loan_approval_workflow.py
-echo "✓ Loan Approval Workflow ready"
+if orchestrate tools import -k flow -f tools/loan_approval_workflow.py; then
+    echo "✓ Loan Approval Workflow ready"
+else
+    echo "  ⚠️  Workflow import failed"
+    echo "  💡 This usually means MCP tools aren't ready yet"
+    echo "  💡 To import manually after MCP servers start:"
+    echo "     orchestrate tools import -k flow -f tools/loan_approval_workflow.py"
+    echo ""
+    echo "  ℹ️  Continuing with agent imports..."
+fi
 echo ""
 
 echo "📋 Verifying workflow import..."
-orchestrate tools list | grep -E "loan_approval_workflow" || echo "  ℹ️  Workflow imported"
+orchestrate tools list | grep -E "loan_approval_workflow" || echo "  ℹ️  Workflow will be imported when tools are ready"
 echo ""
 
 echo "🤖 Step 5: Importing Agents..."

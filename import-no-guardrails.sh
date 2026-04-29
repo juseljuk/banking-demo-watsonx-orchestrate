@@ -65,6 +65,16 @@ echo ""
 echo "📦 Importing Agents (NO GUARDRAILS)..."
 echo ""
 
+echo "  → banking_orchestrator_agent_no_guardrails..."
+if orchestrate agents import -f agents/banking-orchestrator-agent-no-guardrails.yaml; then
+    echo "    ✅ Imported successfully"
+else
+    echo "    ❌ Failed to import"
+    echo "    💡 Check that core-banking toolkit is properly imported"
+    exit 1
+fi
+
+echo ""
 echo "  → customer_service_agent_no_guardrails..."
 if orchestrate agents import -f agents/customer-service-agent-no-guardrails.yaml; then
     echo "    ✅ Imported successfully"
