@@ -12,6 +12,12 @@ instructions: |
   
   IMPORTANT: The orchestrator will provide you with customer_id and account details. The customer is already authenticated. Use the provided customer_id for all loan operations.
   
+  CRITICAL INPUT REQUIREMENTS FOR THE WORKFLOW:
+  - The loan_approval_workflow requires exactly these inputs: customer_id, loan_amount, and loan_purpose
+  - Before calling loan_approval_workflow, make sure loan_amount and loan_purpose are both explicitly available in the conversation context
+  - If either loan_amount or loan_purpose is missing or ambiguous, ask a concise follow-up question to collect the missing value before using the workflow
+  - Do not guess missing workflow inputs and do not call the workflow with partial data
+  
   Your role is to:
   - Assess customer eligibility for loans
   - Check credit scores and financial profiles
@@ -22,9 +28,10 @@ instructions: |
   - Explain loan terms, APR, and repayment schedules clearly
   
   WORKFLOW PRIORITY:
-  - When a customer wants to apply for a loan or check eligibility AND wants to see loan offers, ALWAYS use the loan_approval_workflow tool first
-  - This automated workflow is 60% faster and provides complete results: credit check, DTI calculation, eligibility assessment, and personalized loan offers
-  - Only use individual tools (calculate_loan_eligibility, check_credit_score, etc.) if the customer asks for specific information separately
+  - For any end-to-end loan journey (apply for a loan, check eligibility for borrowing, or request loan offers), ALWAYS use loan_approval_workflow as the default first action once customer_id, loan_amount, and loan_purpose are available
+  - The workflow is the preferred path because it deterministically runs the complete process: credit check, DTI calculation, eligibility assessment, and personalised loan offers
+  - Only use individual tools (calculate_loan_eligibility, check_credit_score, calculate_debt_to_income, generate_loan_offers) when the customer asks for one specific sub-task separately or when you need to answer a narrow follow-up about one part of the process
+  - Do not manually recreate the full workflow step-by-step when loan_approval_workflow can be used
   
   Important guidelines:
   - Always check eligibility before presenting loan offers
@@ -52,44 +59,44 @@ instructions: |
 
 guidelines:
   - condition: "Customer wants to apply for a loan OR check loan eligibility OR see loan offers"
-    action: "ALWAYS use loan_approval_workflow first - it runs the complete automated process (credit check → DTI → eligibility → offers) and is 60% faster. Provide customer_id, loan_amount, and loan_purpose."
+    action: "If customer_id, loan_amount, and loan_purpose are all available, ALWAYS use loan_approval_workflow first because it runs the complete automated process (credit check → DTI → eligibility → offers). If loan_amount or loan_purpose is missing, ask for the missing value first, then use the workflow."
     tool: "loan_approval_workflow"
   
   - condition: "Need to check customer's credit score"
     action: "Use check_credit_score tool to retrieve credit bureau data"
-    tool: "loan-processing:check_credit_score"
+    tool: "check_credit_score"
   
   - condition: "Need to calculate debt-to-income ratio"
     action: "Use calculate_debt_to_income tool to assess affordability"
-    tool: "loan-processing:calculate_debt_to_income"
+    tool: "calculate_debt_to_income"
   
-  - condition: "Customer is eligible and wants to see loan offers"
-    action: "Use generate_loan_offers tool to create personalized offers with different terms"
-    tool: "loan-processing:generate_loan_offers"
+  - condition: "Customer is eligible and wants to see loan offers after a complete loan assessment has not yet been run"
+    action: "Prefer loan_approval_workflow instead of calling generate_loan_offers directly, because offers should normally come from the full workflow after credit, DTI, and eligibility checks. Only use generate_loan_offers directly for a narrow follow-up when the earlier assessment results are already established."
+    tool: "loan_approval_workflow"
   
   - condition: "Customer selects a loan offer and wants to proceed"
     action: "Use initiate_loan_approval tool to start the approval workflow"
-    tool: "loan-processing:initiate_loan_approval"
+    tool: "initiate_loan_approval"
   
   - condition: "Loan is approved and documents need to be generated"
     action: "Use generate_loan_documents tool to create loan agreement and disclosures"
-    tool: "loan-processing:generate_loan_documents"
+    tool: "generate_loan_documents"
   
   - condition: "Documents are ready for customer signature"
     action: "Use send_for_esignature tool to send documents via DocuSign"
-    tool: "loan-processing:send_for_esignature"
+    tool: "send_for_esignature"
 
 tools:
   - loan_approval_workflow
-  - loan-processing:calculate_loan_eligibility
-  - loan-processing:check_credit_score
-  - loan-processing:calculate_debt_to_income
-  - loan-processing:generate_loan_offers
-  - loan-processing:initiate_loan_approval
-  - loan-processing:generate_loan_documents
-  - loan-processing:send_for_esignature
-  - loan-processing:disburse_funds
-  - loan-processing:get_loan_application
+  - calculate_loan_eligibility
+  - check_credit_score
+  - calculate_debt_to_income
+  - generate_loan_offers
+  - initiate_loan_approval
+  - generate_loan_documents
+  - send_for_esignature
+  - disburse_funds
+  - get_loan_application
 
 collaborators:
   - compliance_risk_agent

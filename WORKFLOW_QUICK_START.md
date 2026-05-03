@@ -141,8 +141,8 @@ class LoanApprovalOutput(BaseModel):
 )
 def build_loan_approval_workflow(aflow: Flow) -> Flow:
     # Define nodes (tools)
-    check_credit = aflow.tool("loan-processing:check_credit_score")
-    calculate_dti = aflow.tool("loan-processing:calculate_debt_to_income")
+    check_credit = aflow.tool("check_credit_score")
+    calculate_dti = aflow.tool("calculate_debt_to_income")
     
     # Connect them sequentially
     aflow.sequence(START, check_credit, calculate_dti, END)

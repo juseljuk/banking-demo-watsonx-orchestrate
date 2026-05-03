@@ -75,22 +75,22 @@ The workflow **does NOT handle authentication**. It expects:
 
 ### Tools Used
 
-The workflow calls these existing MCP tools:
+The workflow calls these standalone Python tools:
 
-1. **`loan-processing:check_credit_score`**
+1. **`check_credit_score`**
    - Input: `customer_id`
    - Output: Credit score, rating, bureau data
 
-2. **`loan-processing:calculate_debt_to_income`**
+2. **`calculate_debt_to_income`**
    - Input: `customer_id`
    - Output: DTI ratio, monthly debt, monthly income
 
-3. **`loan-processing:calculate_loan_eligibility`**
+3. **`calculate_loan_eligibility`**
    - Input: `customer_id`, `loan_amount`, `loan_purpose`
    - Output: `eligible` (boolean), reasons, max approved amount
 
-4. **`loan-processing:generate_loan_offers`**
-   - Input: `customer_id`, `loan_amount`, `loan_purpose`
+4. **`generate_loan_offers`**
+   - Input: `customer_id`, `loan_amount`
    - Output: Array of loan offers with terms, APR, monthly payments
 
 ## Usage Examples
@@ -203,8 +203,8 @@ Add the workflow to any agent's tools list:
 # agents/loan-processing-agent.yaml
 tools:
   - loan_approval_workflow  # The workflow as a single tool
-  - loan-processing:check_credit_score
-  - loan-processing:generate_loan_offers
+  - check_credit_score
+  - generate_loan_offers
   # ... other tools
 ```
 

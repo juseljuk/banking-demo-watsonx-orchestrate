@@ -1,0 +1,33 @@
+from typing import Any
+
+
+class _CloudantResponse:
+    def get_result(self) -> Any: ...
+
+
+class CloudantV1:
+    def __init__(self, authenticator: Any) -> None: ...
+    def set_service_url(self, url: str) -> None: ...
+    def get_server_information(self) -> _CloudantResponse: ...
+    def get_all_dbs(self) -> _CloudantResponse: ...
+    def put_database(self, db: str) -> _CloudantResponse: ...
+    def get_document(self, db: str, doc_id: str) -> _CloudantResponse: ...
+    def post_document(self, db: str, document: dict[str, Any]) -> _CloudantResponse: ...
+    def post_find(
+        self,
+        db: str,
+        selector: dict[str, Any],
+        limit: int | None = ...,
+        sort: list[dict[str, str]] | None = ...,
+        fields: list[str] | None = ...,
+    ) -> _CloudantResponse: ...
+    def post_index(
+        self,
+        db: str,
+        index: dict[str, Any],
+        ddoc: str | None = ...,
+        name: str | None = ...,
+        type: str | None = ...,
+    ) -> _CloudantResponse: ...
+
+# Made with Bob

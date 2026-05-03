@@ -73,35 +73,19 @@ Each customer record now includes a PIN field:
 }
 ```
 
-### 2. Core Banking Server (`toolkits/core_banking_server.py`)
+### 2. Core Banking Standalone Tools ([`cloudant-tools/core_banking_tools.py`](cloudant-tools/core_banking_tools.py))
 
 #### Session Store
-```python
-# In-memory session store (demo implementation)
-authenticated_sessions = {}
-```
+Session state is now handled by the standalone Cloudant-backed tool layer rather than a legacy MCP server process.
 
-#### authenticate_customer Tool
-```python
-Tool(
-    name="authenticate_customer",
-    description="Authenticate a customer using their customer ID and PIN code",
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "customer_id": {"type": "string"},
-            "pin": {"type": "string"}
-        },
-        "required": ["customer_id", "pin"]
-    }
-)
-```
+#### [`authenticate_customer()`](cloudant-tools/core_banking_tools.py:24)
+The standalone tool authenticates a customer using their customer ID and PIN code and persists session state through the current Cloudant-backed implementation.
 
 **Implementation**:
 1. Validates customer ID exists
 2. Verifies PIN matches
 3. Generates session token
-4. Stores session in memory
+4. Persists session state through the standalone tool data layer
 5. Returns success with token and customer name
 
 **Response on Success**:
@@ -167,7 +151,7 @@ Tool(
 ### 3. Banking Orchestrator Agent
 
 **Tools**:
-- `core-banking:authenticate_customer`
+- `authenticate_customer`
 
 **Instructions** (Key Points):
 ```yaml
@@ -201,7 +185,7 @@ You MUST use this session_token when calling get_current_customer.
 ```
 
 **Tools**:
-- `core-banking:get_current_customer` (requires session_token parameter)
+- `get_current_customer` (requires session_token parameter)
 
 **Workflow**:
 1. Receive request from orchestrator with session token
@@ -292,16 +276,13 @@ You MUST use this session_token when calling get_current_customer.
 ```bash
 cd banking-demo
 
-# 1. Ensure data files are updated
-cp data/customers.json toolkits/data/customers.json
-
-# 2. Activate environment
+# 1. Activate environment
 source ../.venv/bin/activate
 
-# 3. Reactivate watsonx Orchestrate environment (if token expired)
+# 2. Reactivate watsonx Orchestrate environment (if token expired)
 orchestrate env activate wxo-edu
 
-# 4. Run deployment script
+# 3. Run deployment script
 ./import-all.sh
 ```
 

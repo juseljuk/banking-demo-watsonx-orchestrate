@@ -27,15 +27,16 @@ Run the automated import script:
 ```
 
 This script will:
-- Import all 3 MCP toolkits (Core Banking, Fraud Detection, Loan Processing)
+- Import the Cloudant connection
+- Import all 3 standalone Python tool modules (Core Banking, Fraud Detection, Loan Processing)
 - Import all 5 agents (Banking Orchestrator, Customer Service, Fraud Detection, Loan Processing, Compliance & Risk)
 - Verify all imports were successful
 
 ### 3. Verify Installation
 
-Check that all toolkits are imported:
+Check that the standalone tools are imported:
 ```bash
-orchestrate toolkits list
+orchestrate tools list
 ```
 
 Check that all tools are available:
@@ -56,7 +57,7 @@ orchestrate agents list
 
 **Expected Flow**:
 1. Banking Orchestrator routes to Customer Service Agent
-2. Customer Service Agent uses `core-banking:check_account_balance`
+2. Customer Service Agent uses `check_account_balance`
 3. Returns balance for Emma Thompson's current account: £4,250.50
 
 ### Test Scenario 2: Fund Transfer
@@ -65,7 +66,7 @@ orchestrate agents list
 
 **Expected Flow**:
 1. Banking Orchestrator routes to Customer Service Agent
-2. Customer Service Agent uses `core-banking:transfer_funds`
+2. Customer Service Agent uses `transfer_funds`
 3. Confirms transfer and shows new balances
 
 ### Test Scenario 3: Fraud Detection
@@ -74,7 +75,7 @@ orchestrate agents list
 
 **Expected Flow**:
 1. Banking Orchestrator routes to Fraud Detection Agent
-2. Fraud Detection Agent uses `fraud-detection:get_fraud_scenario`
+2. Fraud Detection Agent uses `get_fraud_scenario`
 3. Shows high-risk international transfer to Nigeria
 4. Risk score: 92/100 - BLOCKED
 
@@ -111,16 +112,16 @@ All demo data is stored in the `data/` directory:
 
 ## 🏗️ Architecture
 
-### MCP Servers
+### Standalone Python Tool Modules
 
-1. **Core Banking Server** (`core_banking_server.py`)
+1. **Core Banking Tools** ([`cloudant-tools/core_banking_tools.py`](cloudant-tools/core_banking_tools.py))
    - Account balance checks
    - Transaction history
    - Fund transfers
    - Pending deposits
    - Payment due dates
 
-2. **Fraud Detection Server** (`fraud_detection_server.py`)
+2. **Fraud Detection Tools** ([`cloudant-tools/fraud_detection_tools.py`](cloudant-tools/fraud_detection_tools.py))
    - Transaction risk analysis
    - Customer profile checks
    - Device fingerprinting
@@ -128,7 +129,7 @@ All demo data is stored in the `data/` directory:
    - Transaction blocking
    - Fraud alerts and case creation
 
-3. **Loan Processing Server** (`loan_processing_server.py`)
+3. **Loan Processing Tools** ([`cloudant-tools/loan_processing_tools.py`](cloudant-tools/loan_processing_tools.py))
    - Loan eligibility calculation
    - Credit score checks
    - Debt-to-income ratio calculation
@@ -146,14 +147,14 @@ All demo data is stored in the `data/` directory:
 
 ## 🔧 Troubleshooting
 
-### MCP Server Not Starting
+### Standalone Tool Import/Configuration Issues
 
-If an MCP server fails to start:
+If standalone tools are unavailable or misconfigured:
 
 ```bash
-# Test the server directly
-cd banking-demo/toolkits
-python3 core_banking_server.py
+# Re-import all required artifacts
+cd banking-demo
+./import-all.sh
 ```
 
 ### Tools Not Available
@@ -161,8 +162,8 @@ python3 core_banking_server.py
 If tools are not showing up:
 
 ```bash
-# Re-import the toolkit
-orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml
+# Re-import standalone tools and related artifacts
+./import-all.sh
 
 # Verify tools are listed
 orchestrate tools list
@@ -180,13 +181,13 @@ orchestrate agents list
 orchestrate agents import -f agents/customer-service-agent.yaml
 ```
 
-### Data File Not Found
+### Standalone Tool Configuration Issues
 
-Ensure you're running commands from the `banking-demo` directory:
+Ensure you're running commands from the `banking-demo` directory and that the Cloudant connection/import process has been completed:
 
 ```bash
 cd banking-demo
-python3 toolkits/core_banking_server.py
+./import-all.sh
 ```
 
 ## 📝 Next Steps
@@ -209,7 +210,7 @@ python3 toolkits/core_banking_server.py
 
 - [Banking Demo Plan](docs/banking-demo-plan.md) - Complete architecture and use cases
 - [Banking Demo Data](docs/banking-demo-data.md) - Detailed data specifications
-- [Implementation Plan](docs/banking-demo-implementation-plan.md) - MCP server approach
+- [Implementation Plan](docs/banking-demo-implementation-plan.md) - legacy architecture history and implementation background
 - [Guardrail Validation](docs/banking-demo-guardrail-validation.md) - Security coverage
 
 ## 🆘 Support

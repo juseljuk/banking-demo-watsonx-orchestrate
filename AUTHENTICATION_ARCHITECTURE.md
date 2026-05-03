@@ -81,8 +81,8 @@ Sessions are persisted in `data/sessions.json`:
 5. Present unified responses
 
 **Tools:**
-- `core-banking:authenticate_customer`
-- `core-banking:get_current_customer`
+- `authenticate_customer`
+- `get_current_customer`
 
 **Key Instructions:**
 ```yaml
@@ -216,9 +216,9 @@ System: "Authentication failed. Invalid Customer ID or PIN. Please try again."
 
 ## File Locations
 
-- **Session Storage**: `banking-demo/data/sessions.json`
+- **Session Storage**: Cloudant-backed session persistence used by the standalone core banking tools
 - **Customer Data**: `banking-demo/data/customers.json`
-- **Core Banking Server**: `banking-demo/toolkits/core_banking_server.py`
+- **Core Banking Standalone Tools**: `banking-demo/cloudant-tools/core_banking_tools.py`
 - **Orchestrator Agent**: `banking-demo/agents/banking-orchestrator-agent.yaml`
 - **Specialist Agents**: `banking-demo/agents/customer-service-agent.yaml`, etc.
 

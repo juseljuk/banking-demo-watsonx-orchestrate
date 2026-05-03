@@ -13,8 +13,15 @@
 
 1. **PII Protection Guardrail** (`pii_protection_guardrail.py`)
    - Type: Post-invoke
-   - Lines of Code: 165
-   - Redaction Patterns: 7 (accounts, sort codes, NI numbers, emails, phones, credit cards, IBANs)
+   - Lines of Code: 180
+   - Redaction Patterns: 8 (account IDs, account numbers, sort codes, NI numbers, emails, phones, credit cards, IBANs)
+   - **Features:**
+     - Automatic PII redaction in agent responses
+     - Security notice appended when redactions occur
+     - Audit logging of redaction events
+   - **Updates:**
+     - 2026-04-29: Added account ID redaction (CUR-001-1234 → CUR-***-1234)
+     - 2026-04-29: Added security notice when PII is masked
 
 2. **Transaction Limit Guardrail** (`transaction_limit_guardrail.py`)
    - Type: Pre-invoke

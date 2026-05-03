@@ -16,7 +16,7 @@ banking-demo/
 ├── docs/                                    # Planning & Documentation
 │   ├── banking-demo-plan.md                # Complete demo plan with architecture & use cases
 │   ├── banking-demo-data.md                # UK-localized dummy data specification
-│   ├── banking-demo-implementation-plan.md # MCP server implementation guide
+│   ├── banking-demo-implementation-plan.md # Legacy MCP implementation history
 │   └── banking-demo-guardrail-validation.md # Guardrail coverage & validation
 │
 ├── data/                                    # ✅ Dummy data (JSON files) - IMPLEMENTED
@@ -28,14 +28,13 @@ banking-demo/
 │   ├── loan_applications.json               # 3 loan applications
 │   └── credit_reports.json                  # Experian UK credit data
 │
-├── toolkits/                                # ✅ MCP servers - IMPLEMENTED
-│   ├── core_banking_server.py               # 8 tools (includes authentication)
-│   ├── fraud_detection_server.py            # 8 tools
-│   ├── loan_processing_server.py            # 9 tools
-│   ├── core-banking-toolkit.yaml
-│   ├── fraud-detection-toolkit.yaml
-│   ├── loan-processing-toolkit.yaml
-│   └── data/                                # Data files for deployed environment (includes sessions.json)
+├── cloudant-tools/                          # ✅ Standalone Cloudant-backed Python tools
+│   ├── core_banking_tools.py                # Core banking standalone tools
+│   ├── fraud_detection_tools.py             # Fraud/risk standalone tools
+│   ├── loan_processing_tools.py             # Lending standalone tools
+│   ├── repositories/                        # Cloudant data access layer
+│   ├── scripts/                             # Bootstrap/seed utilities
+│   └── common/                              # Shared Cloudant config/client utilities
 │
 ├── agents/                                  # ✅ Agent configurations - IMPLEMENTED
 │   ├── banking-orchestrator-agent.yaml      # Primary interface with auth
@@ -51,7 +50,6 @@ banking-demo/
 │   └── fraud_rules_guardrail.py             # Pre-invoke: Risk scoring & blocking
 │
 ├── tests/                                   # ✅ Test cases - IMPLEMENTED
-│   ├── test_mcp_servers.py                  # Tests for all 3 MCP servers
 │   ├── test_guardrail_logic.py              # Tests for all 4 guardrails (16 tests)
 │   ├── test_pii_protection_guardrail.py     # Standalone PII guardrail tests
 │   ├── test_loan_approval_workflow.py       # Workflow simulation tests
@@ -78,7 +76,6 @@ banking-demo/
 ├── import-all.sh                            # ✅ Automated deployment script (with guardrails)
 ├── import-no-guardrails.sh                  # ⚠️  Demo-only script (without guardrails)
 ├── publish-to-github.sh                     # ✅ GitHub publishing script
-├── test_mcp_servers.py                      # ✅ Standalone MCP server tests
 └── requirements.txt                         # ✅ Python dependencies
 ```
 
@@ -170,12 +167,12 @@ banking-demo/
 - [x] Demo architecture and multi-agent orchestration strategy
 - [x] Three use case designs (customer service, fraud, loans)
 - [x] **5 Agent configurations** - All deployed and ready
-- [x] **3 MCP servers with 25 tools** - Core Banking (8), Fraud Detection (8), Loan Processing (9)
+- [x] **3 standalone Cloudant-backed Python tool modules** - Core Banking, Fraud Detection, Loan Processing
 - [x] **1 Agentic Workflow** - Loan approval workflow with deterministic processing
-- [x] **7 JSON data files** - UK-localized customer, account, transaction data (sessions.json in toolkits/data/data/)
+- [x] **7 JSON seed data files** - UK-localized customer, account, transaction data
 - [x] **Customer authentication system** - PIN-based authentication with session management
 - [x] **4 Guardrail plugins** - PII protection, transaction limits, lending compliance, fraud rules
-- [x] **Test suite** - MCP servers, guardrails, and workflow tests (all passing)
+- [x] **Test suite** - Guardrails, workflow tests, and Cloudant-backed tool validation
 - [x] **Deployment automation** - `import-all.sh` script for one-command deployment
 - [x] **Documentation** - 15+ comprehensive guides covering all aspects
 - [x] Demo scripts and presentation flow
@@ -191,11 +188,11 @@ banking-demo/
 ### 📊 Implementation Metrics
 - **Total Files Created**: 40+
 - **Lines of Code**: ~4,000+
-- **MCP Tools**: 25 (8 core banking + 8 fraud + 9 loan)
+- **Standalone Tool Modules**: 3 (core banking, fraud, loan)
 - **Agentic Workflows**: 1 (loan approval)
 - **Agents**: 5 (orchestrator + 4 specialists)
 - **Guardrail Plugins**: 4 (PII, transaction limits, lending compliance, fraud rules)
-- **Test Files**: 6 (MCP servers, guardrails, workflows)
+- **Test Files**: 5 (guardrails, workflows, standalone tool validation)
 - **Documentation Files**: 15+
 
 ## 🎬 Demo Scenarios

@@ -211,15 +211,13 @@ orchestrate tools import -k python -f plugins/lending_compliance_guardrail.py
 orchestrate tools import -k python -f plugins/fraud_rules_guardrail.py
 ```
 
-### MCP servers not responding
+### Standalone tools not available yet
 ```bash
-# Check toolkit status
-orchestrate toolkits list
+# Check imported tools
+orchestrate tools list | grep -E "authenticate_customer|check_account_balance|analyze_transaction_risk|check_credit_score"
 
-# Re-import if needed
-orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml
-orchestrate toolkits import -f toolkits/fraud-detection-toolkit.yaml
-orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml
+# Re-import the standalone tool modules if needed
+./import-all.sh
 ```
 
 ---

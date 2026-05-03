@@ -47,9 +47,9 @@ The banking demo is now deployed and ready to test in watsonx Orchestrate UI.
 - Response time: 3-4 seconds (includes authentication)
 
 **Tools Used**:
-- `core-banking:authenticate_customer`
-- `core-banking:get_current_customer`
-- `core-banking:check_account_balance`
+- `authenticate_customer`
+- `get_current_customer`
+- `check_account_balance`
 
 ---
 
@@ -64,8 +64,8 @@ The banking demo is now deployed and ready to test in watsonx Orchestrate UI.
 - Response time: 2-3 seconds
 
 **Tools Used**:
-- `core-banking:get_customer_accounts`
-- `core-banking:transfer_funds`
+- `get_customer_accounts`
+- `transfer_funds`
 
 **Note**: If session expired, agent will re-authenticate you first.
 
@@ -82,7 +82,7 @@ The banking demo is now deployed and ready to test in watsonx Orchestrate UI.
 - Response time: 2-3 seconds
 
 **Tools Used**:
-- `core-banking:get_recent_transactions`
+- `get_recent_transactions`
 
 **Guardrails Active**:
 - `pii_protection_guardrail` (post-invoke) - Redacts sensitive data
@@ -122,9 +122,9 @@ The banking demo is now deployed and ready to test in watsonx Orchestrate UI.
 - Response time: 4-5 seconds
 
 **Tools Used**:
-- `core-banking:transfer_funds`
-- `core-banking:check_pending_deposits`
-- `core-banking:get_payment_due_date`
+- `transfer_funds`
+- `check_pending_deposits`
+- `get_payment_due_date`
 
 **Guardrails Active**:
 - `transaction_limit_guardrail` (pre-invoke) - Enforces daily limits
@@ -144,7 +144,7 @@ The banking demo is now deployed and ready to test in watsonx Orchestrate UI.
 - Response time: 2-3 seconds
 
 **Tools Used**:
-- `fraud-detection:analyze_transaction_risk`
+- `analyze_transaction_risk`
 
 **Guardrails Active**:
 - `fraud_rules_guardrail` (pre-invoke) - Blocks critical risk (score ≥91)
@@ -262,9 +262,9 @@ When you test, you're automatically identified as:
 **Current**: Deterministic loan_approval_workflow (60% faster)
 **Status**: Workflow implemented and integrated with loan agent
 
-### Issue 4: Data Files ✅ FIXED
-**Problem**: MCP servers couldn't find data files when deployed
-**Fix**: Copied data to `toolkits/data/` with fallback logic
+### Issue 4: Standalone tool deployment data/config ✅ FIXED
+**Problem**: runtime configuration and persisted demo data needed to be available consistently for standalone tools
+**Fix**: moved the implementation to Cloudant-backed standalone tools and standardized deployment/import through [`import-all.sh`](import-all.sh)
 **Status**: All tests passing
 
 ---
@@ -274,9 +274,9 @@ When you test, you're automatically identified as:
 ### 1. Check Authentication Flow
 Look for this in the agent's reasoning:
 ```
-Using tool: core-banking:authenticate_customer
+Using tool: authenticate_customer
 Result: Authentication successful, session_token: sess_xxx
-Using tool: core-banking:get_current_customer
+Using tool: get_current_customer
 Result: Emma Thompson (CUST-001)
 ```
 

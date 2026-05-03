@@ -6,6 +6,7 @@ This guardrail runs AFTER the agent generates a response and sanitizes PII befor
 returning to the user.
 
 Redaction Patterns:
+- Account IDs: CUR-001-1234 → CUR-***-1234 (mask middle section)
 - Account numbers: Full number → ****1234 (last 4 digits)
 - Sort codes: 20-00-00 → **-**-00 (last 2 digits)
 - National Insurance numbers: AB123456D → ******456D (last 4 chars)
@@ -28,6 +29,13 @@ from ibm_watsonx_orchestrate.agent_builder.tools.types import (
 )
 import re
 from typing import Dict, Any
+
+
+def redact_account_ids(text: str) -> str:
+    """Redact account IDs to show only last 4 characters."""
+    # Match account IDs in format: CUR-001-1234, SAV-001-5678, CC-001-9012, BUS-002-3456
+    pattern = r'\b(CUR|SAV|CC|BUS|ISA|LON)-\d{3}-(\d{4})\b'
+    return re.sub(pattern, r'\1-***-\2', text)
 
 
 def redact_account_numbers(text: str) -> str:
@@ -76,9 +84,30 @@ def redact_emails(text: str) -> str:
 
 def redact_phone_numbers(text: str) -> str:
     """Redact phone numbers to show only last 4 digits."""
-    # Match UK phone numbers: +44 XX XXXX XXXX or +44 XXXX XXX XXX
-    pattern = r'\+44\s*\d{2,4}\s*\d{3,4}\s*(\d{4})\b'
-    return re.sub(pattern, r'+44 ** **** \1', text)
+    # Normalize narrow/no-break spaces often produced by UI rendering before matching.
+    normalized_text = (
+        text.replace("\u202f", " ")
+        .replace("\u00a0", " ")
+        .replace("\u2009", " ")
+        .replace("\u2007", " ")
+        .replace("\u2060", "")
+    )
+
+    # Match UK-style phone numbers with optional spaces and variable grouping.
+    # Examples:
+    # +44 20 7946 0123 -> +44 ** **** 0123
+    # +44 7700 123 456 -> +44 ** **** 3456
+    # +447700123456 -> +44 ** **** 3456
+    pattern = r'\+44(?:[\s\u202f\u00a0\u2009\u2007]*\d){6,10}\b'
+
+    def replacer(match):
+        value = match.group()
+        digits_only = re.sub(r'\D', '', value)
+        national_digits = digits_only[2:] if digits_only.startswith('44') else digits_only
+        last_four = national_digits[-4:] if len(national_digits) >= 4 else national_digits
+        return f"+44 ** **** {last_four}"
+
+    return re.sub(pattern, replacer, normalized_text)
 
 
 def redact_credit_cards(text: str) -> str:
@@ -97,6 +126,7 @@ def redact_ibans(text: str) -> str:
 
 def apply_all_redactions(text: str) -> str:
     """Apply all PII redaction patterns to text."""
+    text = redact_account_ids(text)
     text = redact_account_numbers(text)
     text = redact_sort_codes(text)
     text = redact_ni_numbers(text)
@@ -154,6 +184,10 @@ def pii_protection_guardrail(
     if redactions_made:
         # Log redaction event (in production, this would go to audit log)
         print(f"[PII_PROTECTION] Redacted PII from response (length: {len(response_text)} → {len(redacted_text)})")
+        
+        # Add security notice to inform user that data has been masked
+        security_notice = "\n\n---\n*🔒 For your security, some sensitive information has been masked in this response.*"
+        redacted_text = redacted_text + security_notice
     
     # Create modified response with redacted text
     new_content = TextContent(type="text", text=redacted_text)

@@ -1,0 +1,6 @@
+# Cloudant tools dependencies
+ibmcloudant>=0.10.1
+python-dotenv>=1.0.1
+
+# Note: ibm-watsonx-orchestrate is intentionally not included here
+# because it is platform-managed in watsonx Orchestrate environments.

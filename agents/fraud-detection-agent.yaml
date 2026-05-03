@@ -37,37 +37,37 @@ instructions: |
 guidelines:
   - condition: "A transaction has unusual characteristics (large amount, foreign location, unusual time)"
     action: "Use analyze_transaction_risk tool to calculate risk score and determine action"
-    tool: "fraud-detection:analyze_transaction_risk"
+    tool: "analyze_transaction_risk"
   
   - condition: "Risk score is 80 or higher"
     action: "Block the transaction immediately using block_transaction tool and create a fraud case"
-    tool: "fraud-detection:block_transaction"
+    tool: "block_transaction"
   
   - condition: "A transaction is blocked"
     action: "Send fraud alert to customer via SMS and Email to notify them"
-    tool: "fraud-detection:send_fraud_alert"
+    tool: "send_fraud_alert"
   
   - condition: "Multiple failed login attempts or suspicious device detected"
     action: "Verify device fingerprint and check for account takeover patterns"
-    tool: "fraud-detection:verify_device_fingerprint"
+    tool: "verify_device_fingerprint"
   
   - condition: "Need to check if customer is making too many transactions"
     action: "Use check_velocity_rules to verify transaction frequency limits"
-    tool: "fraud-detection:check_velocity_rules"
+    tool: "check_velocity_rules"
   
   - condition: "A fraud case needs to be created"
     action: "Create detailed fraud case with risk analysis and assign to investigation team"
-    tool: "fraud-detection:create_fraud_case"
+    tool: "create_fraud_case"
 
 tools:
-  - fraud-detection:analyze_transaction_risk
-  - fraud-detection:check_customer_profile
-  - fraud-detection:verify_device_fingerprint
-  - fraud-detection:check_velocity_rules
-  - fraud-detection:block_transaction
-  - fraud-detection:send_fraud_alert
-  - fraud-detection:create_fraud_case
-  - fraud-detection:get_fraud_scenario
+  - analyze_transaction_risk
+  - check_customer_profile
+  - verify_device_fingerprint
+  - check_velocity_rules
+  - block_transaction
+  - send_fraud_alert
+  - create_fraud_case
+  - get_fraud_scenario
 
 collaborators: []
 

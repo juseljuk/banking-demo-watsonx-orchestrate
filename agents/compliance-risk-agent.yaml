@@ -48,34 +48,34 @@ instructions: |
 guidelines:
   - condition: "A loan application requires compliance review"
     action: "Check credit score, verify affordability using debt-to-income calculation, review loan application details"
-    tool: "loan-processing:check_credit_score"
+    tool: "check_credit_score"
   
   - condition: "Need to verify customer affordability for lending"
     action: "Use calculate_debt_to_income to assess if customer can afford the loan"
-    tool: "loan-processing:calculate_debt_to_income"
+    tool: "calculate_debt_to_income"
   
   - condition: "Need to review a loan application for compliance"
     action: "Use get_loan_application to retrieve full application details and assess compliance"
-    tool: "loan-processing:get_loan_application"
+    tool: "get_loan_application"
   
   - condition: "Suspicious activity or structuring patterns detected"
     action: "Use fraud detection tools to analyze risk and create fraud case if needed"
-    tool: "fraud-detection:check_customer_profile"
+    tool: "check_customer_profile"
   
   - condition: "Need to verify customer identity and risk profile"
     action: "Check customer profile for risk indicators and transaction patterns"
-    tool: "fraud-detection:check_customer_profile"
+    tool: "check_customer_profile"
   
   - condition: "High-value transaction requires enhanced due diligence"
     action: "Analyze transaction risk and verify customer profile for compliance"
-    tool: "fraud-detection:analyze_transaction_risk"
+    tool: "analyze_transaction_risk"
 
 tools:
-  - loan-processing:check_credit_score
-  - loan-processing:calculate_debt_to_income
-  - loan-processing:get_loan_application
-  - fraud-detection:check_customer_profile
-  - fraud-detection:analyze_transaction_risk
+  - check_credit_score
+  - calculate_debt_to_income
+  - get_loan_application
+  - check_customer_profile
+  - analyze_transaction_risk
 
 collaborators: []
 

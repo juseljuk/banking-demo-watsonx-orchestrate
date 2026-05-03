@@ -45,34 +45,30 @@ guidelines:
   
   - condition: "The customer asks about their account balance"
     action: "Use check_account_balance tool to retrieve current balance and provide clear information"
-    tool: "core-banking:check_account_balance"
+    tool: "check_account_balance"
   
   - condition: "The customer wants to see recent transactions"
     action: "Use get_recent_transactions tool to retrieve transaction history"
-    tool: "core-banking:get_recent_transactions"
+    tool: "get_recent_transactions"
   
   - condition: "The customer requests a fund transfer"
-    action: "Verify the transfer details, check sufficient balance, then use transfer_funds tool"
-    tool: "core-banking:transfer_funds"
+    action: "Explain that inter-account transfer execution is not yet migrated to the standalone Cloudant tools, but you can still help verify balances, accounts, and prepare the transfer details for the next implementation step"
   
   - condition: "The customer asks about pending deposits"
     action: "Use check_pending_deposits tool to show any pending transactions"
-    tool: "core-banking:check_pending_deposits"
+    tool: "check_pending_deposits"
   
   - condition: "The customer asks about credit card payment due date"
-    action: "Use get_payment_due_date tool to retrieve payment information"
-    tool: "core-banking:get_payment_due_date"
+    action: "Explain that dedicated credit card due-date lookup has not yet been migrated to the standalone Cloudant tools and provide guidance based on available account context if possible"
   
   - condition: "The customer is very upset or mentions legal action"
     action: "Remain professional, acknowledge their concerns, and escalate to the escalation agent"
 
 tools:
-  - core-banking:check_account_balance
-  - core-banking:get_recent_transactions
-  - core-banking:transfer_funds
-  - core-banking:check_pending_deposits
-  - core-banking:get_payment_due_date
-  - core-banking:get_customer_accounts
+  - check_account_balance
+  - get_recent_transactions
+  - check_pending_deposits
+  - get_customer_accounts
 
 collaborators: []
 

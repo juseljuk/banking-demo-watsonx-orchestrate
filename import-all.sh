@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Banking Demo - Import All Artifacts
-# This script imports all MCP toolkits and agents into watsonx Orchestrate
-# Handles both new imports and updates of existing artifacts
+# This script imports the Cloudant connection, standalone Python tools,
+# guardrails, workflows, and agents into watsonx Orchestrate.
 
 set -e  # Exit on error
 
@@ -11,7 +11,7 @@ echo "Banking Demo - Import All Artifacts"
 echo "=========================================="
 echo ""
 
-# Change to the banking-demo directory
+# Change to the project directory
 cd "$(dirname "$0")"
 
 # Activate virtual environment if it exists
@@ -19,103 +19,58 @@ if [ -f "../.venv/bin/activate" ]; then
     source ../.venv/bin/activate
 fi
 
-echo "📦 Step 1: Preparing Data Files..."
+# Check if orchestrate CLI is available
+if ! command -v orchestrate >/dev/null 2>&1; then
+    echo "❌ Error: orchestrate CLI not found"
+    echo "Please install: pip install ibm-watsonx-orchestrate"
+    exit 1
+fi
+
+echo "🔐 Step 1: Importing Cloudant Connection..."
 echo "-----------------------------------"
-echo "Copying data files to toolkits directory..."
-cp -r data toolkits/data 2>/dev/null || true
-echo "✓ Data files ready"
+./import-cloudant-connection.sh
+echo "✓ Cloudant connection ready"
 echo ""
 
-echo "📦 Step 2: Importing MCP Toolkits..."
+echo "📦 Step 2: Importing Standalone Python Tools..."
 echo "-----------------------------------"
 
-echo "Importing Core Banking toolkit..."
-if orchestrate toolkits list 2>/dev/null | grep -q "core-banking"; then
-    echo "  ℹ️  Core Banking toolkit already exists, removing and reimporting..."
-    orchestrate toolkits remove -n core-banking 2>/dev/null || true
-    echo "  ⏳ Waiting for removal to complete..."
-    sleep 5  # Wait longer for removal to complete
-fi
-echo "  📤 Uploading toolkit..."
-if orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml; then
-    echo "✓ Core Banking toolkit ready"
-else
-    echo "  ⚠️  Import failed with server error. This is usually temporary."
-    echo "  💡 Try running the script again, or import manually:"
-    echo "     orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml"
-fi
+TOOLS_REQUIREMENTS="cloudant-tools/requirements.txt"
+TOOLS_PACKAGE_ROOT="cloudant-tools"
+TOOLS_APP_ID="cloudant"
+
+echo "Importing Core Banking standalone tools..."
+orchestrate tools import \
+    -k python \
+    -f cloudant-tools/core_banking_tools.py \
+    -r "$TOOLS_REQUIREMENTS" \
+    --package-root "$TOOLS_PACKAGE_ROOT" \
+    --app-id "$TOOLS_APP_ID"
+echo "✓ Core Banking standalone tools ready"
 echo ""
 
-echo "Importing Fraud Detection toolkit..."
-if orchestrate toolkits list 2>/dev/null | grep -q "fraud-detection"; then
-    echo "  ℹ️  Fraud Detection toolkit already exists, removing and reimporting..."
-    orchestrate toolkits remove -n fraud-detection 2>/dev/null || true
-    echo "  ⏳ Waiting for removal to complete..."
-    sleep 5  # Wait longer for removal to complete
-fi
-echo "  📤 Uploading toolkit..."
-if orchestrate toolkits import -f toolkits/fraud-detection-toolkit.yaml; then
-    echo "✓ Fraud Detection toolkit ready"
-else
-    echo "  ⚠️  Import failed with server error. This is usually temporary."
-    echo "  💡 Try running the script again, or import manually:"
-    echo "     orchestrate toolkits import -f toolkits/fraud-detection-toolkit.yaml"
-fi
+echo "Importing Fraud Detection standalone tools..."
+orchestrate tools import \
+    -k python \
+    -f cloudant-tools/fraud_detection_tools.py \
+    -r "$TOOLS_REQUIREMENTS" \
+    --package-root "$TOOLS_PACKAGE_ROOT" \
+    --app-id "$TOOLS_APP_ID"
+echo "✓ Fraud Detection standalone tools ready"
 echo ""
 
-echo "Importing Loan Processing toolkit..."
-if orchestrate toolkits list 2>/dev/null | grep -q "loan-processing"; then
-    echo "  ℹ️  Loan Processing toolkit already exists, removing and reimporting..."
-    orchestrate toolkits remove -n loan-processing 2>/dev/null || true
-    echo "  ⏳ Waiting for removal to complete..."
-    sleep 5  # Wait longer for removal to complete
-fi
-echo "  📤 Uploading toolkit..."
-if orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml; then
-    echo "✓ Loan Processing toolkit ready"
-else
-    echo "  ⚠️  Import failed with server error. This is usually temporary."
-    echo "  💡 Try running the script again, or import manually:"
-    echo "     orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml"
-fi
+echo "Importing Loan Processing standalone tools..."
+orchestrate tools import \
+    -k python \
+    -f cloudant-tools/loan_processing_tools.py \
+    -r "$TOOLS_REQUIREMENTS" \
+    --package-root "$TOOLS_PACKAGE_ROOT" \
+    --app-id "$TOOLS_APP_ID"
+echo "✓ Loan Processing standalone tools ready"
 echo ""
 
-echo "📋 Verifying toolkit imports..."
-orchestrate toolkits list
-echo ""
-
-echo "🔧 Verifying tool imports..."
-echo "  ⏳ Waiting for MCP servers to start and register tools..."
-sleep 10  # Give MCP servers time to start and register tools
-
-# Verify tools are available
-MAX_RETRIES=6
-RETRY_COUNT=0
-TOOLS_READY=false
-
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if orchestrate tools list 2>/dev/null | grep -q "loan-processing:check_credit_score"; then
-        echo "  ✓ MCP tools are ready"
-        TOOLS_READY=true
-        break
-    else
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-            echo "  ⏳ Waiting for tools to register (attempt $RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 5
-        fi
-    fi
-done
-
-if [ "$TOOLS_READY" = false ]; then
-    echo "  ⚠️  WARNING: MCP tools not yet available"
-    echo "  💡 The workflow import may fail. If it does:"
-    echo "     1. Wait 30 seconds for MCP servers to fully start"
-    echo "     2. Run: orchestrate tools import -k flow -f tools/loan_approval_workflow.py"
-    echo ""
-fi
-
-orchestrate tools list | grep -E "(core-banking|fraud-detection|loan-processing)" || echo "  ℹ️  Some tools may still be starting"
+echo "📋 Verifying standalone tool imports..."
+orchestrate tools list | grep -E "authenticate_customer|check_account_balance|get_recent_transactions|analyze_transaction_risk|check_credit_score|calculate_loan_eligibility" || echo "  ℹ️  Some standalone tools may still be propagating"
 echo ""
 
 echo "🛡️ Step 3: Importing Guardrail Plugins..."
@@ -153,8 +108,12 @@ if orchestrate tools import -k flow -f tools/loan_approval_workflow.py; then
     echo "✓ Loan Approval Workflow ready"
 else
     echo "  ⚠️  Workflow import failed"
-    echo "  💡 This usually means MCP tools aren't ready yet"
-    echo "  💡 To import manually after MCP servers start:"
+    echo "  💡 Verify standalone loan tools are available and imported:"
+    echo "     check_credit_score"
+    echo "     calculate_debt_to_income"
+    echo "     calculate_loan_eligibility"
+    echo "     generate_loan_offers"
+    echo "  💡 Then retry:"
     echo "     orchestrate tools import -k flow -f tools/loan_approval_workflow.py"
     echo ""
     echo "  ℹ️  Continuing with agent imports..."
@@ -162,7 +121,7 @@ fi
 echo ""
 
 echo "📋 Verifying workflow import..."
-orchestrate tools list | grep -E "loan_approval_workflow" || echo "  ℹ️  Workflow will be imported when tools are ready"
+orchestrate tools list | grep -E "loan_approval_workflow" || echo "  ℹ️  Workflow may need a retry after tool propagation"
 echo ""
 
 echo "🤖 Step 5: Importing Agents..."
@@ -202,7 +161,8 @@ echo "✅ All artifacts imported successfully!"
 echo "=========================================="
 echo ""
 echo "📊 Import Summary:"
-echo "- 3 MCP Toolkits (25 tools)"
+echo "- 1 Cloudant connection"
+echo "- 3 standalone Python tool modules"
 echo "- 4 Guardrail Plugins"
 echo "- 1 Agentic Workflow (loan_approval_workflow)"
 echo "- 5 Banking Agents"
@@ -214,10 +174,10 @@ echo "3. Authenticate with: CUST-001 / PIN: 1234"
 echo ""
 echo "Demo scenarios to try:"
 echo "✅ Account Balance: 'What's my current account balance?'"
-echo "✅ Transfer: 'Transfer £1,500 to my savings account'"
+echo "✅ Recent Transactions: 'Show my last 3 transactions'"
 echo "✅ Loan Application: 'I'd like to apply for a £20,000 personal loan'"
-echo "❌ Blocked Transfer: 'Transfer £12,000 to savings' (exceeds limit)"
-echo "❌ Blocked Fraud: 'URGENT! Send £12,000 to Nigeria for cryptocurrency!'"
+echo "✅ Fraud Review: 'Show me the fraud scenario TXN-FRAUD-001'"
+echo "ℹ️ Transfer execution is not yet fully migrated in the standalone customer service path"
 echo ""
 echo "📖 See GUARDRAIL_DEMO_GUIDE.md for complete demo scenarios"
 echo ""
