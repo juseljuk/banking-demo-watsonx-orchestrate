@@ -140,7 +140,7 @@ class LoanApprovalOutput(BaseModel):
     output_schema=LoanApprovalOutput
 )
 def build_loan_approval_workflow(aflow: Flow) -> Flow:
-    # Define nodes (tools)
+    # Define nodes (standalone Python tools from Cloudant-backed modules)
     check_credit = aflow.tool("check_credit_score")
     calculate_dti = aflow.tool("calculate_debt_to_income")
     
@@ -149,6 +149,8 @@ def build_loan_approval_workflow(aflow: Flow) -> Flow:
     
     return aflow
 ```
+
+**Note**: The workflow references standalone Python tools that are backed by Cloudant databases, not MCP toolkit tools.
 
 ### Key Components
 
@@ -213,14 +215,30 @@ Cost: ~$0.005
 
 ## 🚀 Next Steps
 
-1. **Import the workflow**: `orchestrate tools import -k flow -f tools/loan_approval_workflow.py`
-2. **Test with Emma**: Use CUST-001, £20,000, "Home Improvements"
-3. **Compare with agent**: Try same request with loan_processing_agent
-4. **Measure performance**: Compare speed and token usage
-5. **Create your own**: Build a workflow for your use case
+1. **Bootstrap Cloudant** (first-time setup):
+   ```bash
+   cd cloudant-tools/scripts
+   python bootstrap_and_seed.py
+   ```
+
+2. **Import everything** (includes workflow):
+   ```bash
+   ./import-all.sh
+   ```
+   The workflow is automatically imported as part of this script (Step 4).
+
+3. **Test with Emma**: Use CUST-001, £20,000, "Home Improvements"
+
+4. **Compare with agent**: Try same request with loan_processing_agent
+
+5. **Measure performance**: Compare speed and token usage
+
+6. **Create your own**: Build a workflow for your use case
 
 ---
 
-**Created**: 2026-04-27  
-**Author**: Bob (WXO Agent Architect)  
+**Created**: 2026-04-27
+**Updated**: 2026-05-05
+**Author**: Bob (WXO Agent Architect)
+**Architecture**: Cloudant-backed standalone Python tools
 **Status**: Ready to Demo

@@ -71,11 +71,11 @@ The workflow implements these deterministic rules:
 The workflow **does NOT handle authentication**. It expects:
 - Customer is already authenticated by the orchestrator
 - `customer_id` is provided as input
-- Session context is maintained by the platform
+- No session tokens - uses direct customer_id passing with Cloudant-backed data
 
 ### Tools Used
 
-The workflow calls these standalone Python tools:
+The workflow calls these **standalone Cloudant-backed Python tools**:
 
 1. **`check_credit_score`**
    - Input: `customer_id`
@@ -86,12 +86,14 @@ The workflow calls these standalone Python tools:
    - Output: DTI ratio, monthly debt, monthly income
 
 3. **`calculate_loan_eligibility`**
-   - Input: `customer_id`, `loan_amount`, `loan_purpose`
+   - Input: `customer_id`, `loan_amount`, `loan_purpose`, `credit_score`, `debt_to_income_ratio`
    - Output: `eligible` (boolean), reasons, max approved amount
+   - **Note**: Workflow explicitly maps `credit_score` and `debt_to_income_ratio` from previous tool outputs
 
 4. **`generate_loan_offers`**
-   - Input: `customer_id`, `loan_amount`
+   - Input: `customer_id`, `loan_amount`, `credit_score`
    - Output: Array of loan offers with terms, APR, monthly payments
+   - **Note**: Workflow passes `credit_score` from check_credit_score tool output
 
 ## Usage Examples
 
@@ -377,8 +379,8 @@ orchestrate tools import -k flow -f tools/loan_approval_workflow.py
 
 Check the evaluator expression:
 ```python
-# Correct: Access node output
-evaluator="flow.nodes['assess_eligibility'].output.eligible == True"
+# Correct: Access node output using dictionary syntax
+evaluator='flow["calculate_loan_eligibility"].output.eligible == True'
 
 # Wrong: Direct access
 evaluator="flow.output.eligible == True"
@@ -386,9 +388,13 @@ evaluator="flow.output.eligible == True"
 
 ### Tools Not Available
 
-Ensure MCP toolkits are imported first:
+Ensure standalone Python tools are imported:
 ```bash
-orchestrate toolkits list | grep loan-processing
+# Check if loan processing tools are imported
+orchestrate tools list | grep -E "(check_credit_score|calculate_debt_to_income|calculate_loan_eligibility|generate_loan_offers)"
+
+# If missing, import the tools
+orchestrate tools import -k python -f cloudant-tools/loan_processing_tools.py
 ```
 
 ## Next Steps

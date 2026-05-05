@@ -19,7 +19,7 @@ banking-demo/
 │   ├── banking-demo-implementation-plan.md # Legacy MCP implementation history
 │   └── banking-demo-guardrail-validation.md # Guardrail coverage & validation
 │
-├── data/                                    # ✅ Dummy data (JSON files) - IMPLEMENTED
+├── data/                                    # ✅ Seed data (JSON files) - Required for bootstrap
 │   ├── customers.json                       # 3 UK customer profiles with PINs
 │   ├── accounts.json                        # 5 accounts with UK banking conventions
 │   ├── transactions.json                    # 15 realistic UK transactions
@@ -27,14 +27,18 @@ banking-demo/
 │   ├── devices.json                         # Device fingerprints
 │   ├── loan_applications.json               # 3 loan applications
 │   └── credit_reports.json                  # Experian UK credit data
+│   └── (Used by bootstrap script to seed 8 Cloudant databases)
 │
-├── cloudant-tools/                          # ✅ Standalone Cloudant-backed Python tools
-│   ├── core_banking_tools.py                # Core banking standalone tools
-│   ├── fraud_detection_tools.py             # Fraud/risk standalone tools
-│   ├── loan_processing_tools.py             # Lending standalone tools
-│   ├── repositories/                        # Cloudant data access layer
-│   ├── scripts/                             # Bootstrap/seed utilities
-│   └── common/                              # Shared Cloudant config/client utilities
+├── cloudant-tools/                          # ✅ Standalone Cloudant-backed Python tools (25 tools)
+│   ├── core_banking_tools.py                # 12 core banking tools
+│   ├── fraud_detection_tools.py             # 7 fraud/risk tools
+│   ├── loan_processing_tools.py             # 6 lending tools
+│   ├── repositories/                        # 7 repository classes for Cloudant data access
+│   ├── scripts/                             # Bootstrap script (creates & seeds 8 databases)
+│   └── common/                              # Cloudant client & configuration utilities
+│
+├── connections/                             # ✅ Connection configurations
+│   └── cloudant-connection.yaml             # Cloudant database connection
 │
 ├── agents/                                  # ✅ Agent configurations - IMPLEMENTED
 │   ├── banking-orchestrator-agent.yaml      # Primary interface with auth
@@ -67,19 +71,25 @@ banking-demo/
 ├── IMPLEMENTATION.md                        # ✅ Detailed implementation notes
 ├── TESTING_GUIDE.md                         # ✅ Testing procedures
 ├── TROUBLESHOOTING.md                       # ✅ Common issues and solutions
-├── GUARDRAIL_DEMO_GUIDE.md                  # ✅ Guardrail demo scenarios
-├── GUARDRAIL_BEFORE_AFTER_DEMO.md           # ✅ Before/after guardrail comparison
+├── DEMO_GUIDE.md                            # ✅ Comprehensive demo guide with guardrail scenarios
 ├── GUARDRAILS_IMPLEMENTATION.md             # ✅ Technical guardrail details
 ├── LOAN_APPROVAL_WORKFLOW.md                # ✅ Workflow implementation guide
 ├── WORKFLOW_QUICK_START.md                  # ✅ Quick start for workflows
 ├── QUICK_START_DEMO.md                      # ✅ Quick demo guide
 ├── import-all.sh                            # ✅ Automated deployment script (with guardrails)
+├── import-cloudant-connection.sh            # ✅ Cloudant connection import script
 ├── import-no-guardrails.sh                  # ⚠️  Demo-only script (without guardrails)
 ├── publish-to-github.sh                     # ✅ GitHub publishing script
 └── requirements.txt                         # ✅ Python dependencies
 ```
 
 ## 🎯 Key Features
+
+### Persistent Data Storage with IBM Cloudant
+- **8 NoSQL Databases** - Customers, Accounts, Transactions, Credit Reports, Devices, Fraud Cases, Loan Applications, Audit Logs
+- **Repository Pattern** - Clean data access layer abstracting Cloudant queries
+- **Bootstrap Process** - Automated database creation, indexing, and seeding from JSON files
+- **Production-Ready** - Scalable, distributed NoSQL database with built-in replication
 
 ### Multi-Agent Orchestration
 - **Banking Orchestrator Agent** - Primary customer interface with intelligent routing
@@ -147,12 +157,9 @@ banking-demo/
    - Demo scenario mappings
 
 3. **[banking-demo-implementation-plan.md](docs/banking-demo-implementation-plan.md)**
-   - MCP server architecture (recommended approach)
-   - Three MCP servers: Core Banking, Fraud Detection, Loan Processing
-   - Implementation timeline (4 weeks)
-   - Code examples and YAML configurations
-   - Testing strategy
-   - Deployment guide
+   - **Historical reference** - Original MCP server architecture plan
+   - Current implementation uses standalone Cloudant-backed Python tools
+   - See IMPLEMENTATION.md and IMPLEMENTATION_SUMMARY.md for current architecture
 
 4. **[banking-demo-guardrail-validation.md](docs/banking-demo-guardrail-validation.md)**
    - Validation matrix for all guardrails
@@ -167,10 +174,13 @@ banking-demo/
 - [x] Demo architecture and multi-agent orchestration strategy
 - [x] Three use case designs (customer service, fraud, loans)
 - [x] **5 Agent configurations** - All deployed and ready
-- [x] **3 standalone Cloudant-backed Python tool modules** - Core Banking, Fraud Detection, Loan Processing
+- [x] **8 Cloudant NoSQL databases** - Persistent storage for all banking data
+- [x] **3 standalone Cloudant-backed Python tool modules** - 25 tools total (Core Banking, Fraud Detection, Loan Processing)
+- [x] **7 repository classes** - Clean data access layer for Cloudant
+- [x] **Bootstrap & seed process** - Automated database setup from JSON files
 - [x] **1 Agentic Workflow** - Loan approval workflow with deterministic processing
 - [x] **7 JSON seed data files** - UK-localized customer, account, transaction data
-- [x] **Customer authentication system** - PIN-based authentication with session management
+- [x] **Customer authentication system** - PIN-based authentication with direct customer_id passing
 - [x] **4 Guardrail plugins** - PII protection, transaction limits, lending compliance, fraud rules
 - [x] **Test suite** - Guardrails, workflow tests, and Cloudant-backed tool validation
 - [x] **Deployment automation** - `import-all.sh` script for one-command deployment
@@ -188,11 +198,13 @@ banking-demo/
 ### 📊 Implementation Metrics
 - **Total Files Created**: 40+
 - **Lines of Code**: ~4,000+
-- **Standalone Tool Modules**: 3 (core banking, fraud, loan)
+- **Cloudant Databases**: 8 (customers, accounts, transactions, credit, devices, fraud, loans, audit)
+- **Repository Classes**: 7 (data access layer)
+- **Standalone Tools**: 25 (across 3 modules)
 - **Agentic Workflows**: 1 (loan approval)
 - **Agents**: 5 (orchestrator + 4 specialists)
 - **Guardrail Plugins**: 4 (PII, transaction limits, lending compliance, fraud rules)
-- **Test Files**: 5 (guardrails, workflows, standalone tool validation)
+- **Test Files**: 5 (guardrails, workflows, tool validation)
 - **Documentation Files**: 15+
 
 ## 🎬 Demo Scenarios
@@ -202,7 +214,7 @@ banking-demo/
 **System**: "To help you, I need to verify your identity. Please provide your Customer ID and 4-digit PIN."
 **Customer**: "CUST-001 and 1234"
 **System**: "Welcome back, Emma Thompson! Your current account balance is £4,250.50"
-**Demonstrates**: Secure authentication, session management, identity verification
+**Demonstrates**: Secure authentication, Cloudant-backed credential validation, identity verification
 
 ### Scenario 1: Simple Account Inquiry (After Authentication)
 **Customer**: "What's my current account balance?"
@@ -212,7 +224,7 @@ banking-demo/
 ### Scenario 2: Multi-Step Request
 **Customer**: "Transfer £1,500 to savings, check pending deposits, and tell me when my credit card payment is due"
 **Response Time**: 4-5 seconds
-**Demonstrates**: Multi-tool coordination, transaction processing, session token passing
+**Demonstrates**: Multi-tool coordination, transaction processing, direct customer_id passing between agents
 
 ### Scenario 3: Fraud Detection
 **Trigger**: £3,500 international transfer to Nigeria at 2 AM
@@ -230,11 +242,11 @@ banking-demo/
 ### ✅ Implemented Security Features
 
 #### 1. Customer Authentication
-- PIN-based authentication with session tokens
-- Customer ID + 4-digit PIN verification
-- Session token generation and management
-- Secure credential storage (demo: plain text, production: hashed)
-- Session validation for all operations
+- PIN-based authentication with direct customer_id passing
+- Customer ID + 4-digit PIN verification against Cloudant database
+- Cloudant-backed credential validation
+- Secure credential storage in Cloudant (demo: plain text, production: hashed)
+- Customer context passed directly between agents (no session tokens)
 
 #### 2. Guardrail Plugins (4 Implemented)
 
@@ -276,7 +288,7 @@ banking-demo/
 - Credit bureau integration (Experian UK)
 
 ### 📖 Guardrail Documentation
-- [`GUARDRAIL_DEMO_GUIDE.md`](GUARDRAIL_DEMO_GUIDE.md) - Complete demo scenarios and scripts
+- [`DEMO_GUIDE.md`](DEMO_GUIDE.md) - Comprehensive demo guide with guardrail scenarios, before/after comparisons, and troubleshooting
 - [`GUARDRAILS_IMPLEMENTATION.md`](GUARDRAILS_IMPLEMENTATION.md) - Technical implementation details
 
 ## 👥 Customer Personas & Credentials
@@ -331,49 +343,72 @@ banking-demo/
 
 2. **Validate Multi-Agent Orchestration**
    - Test orchestrator routing to specialists
-   - Verify session token passing between agents
+   - Verify customer_id passing between agents
    - Check context preservation across handoffs
+   - Validate Cloudant data persistence
 
 3. **Performance Testing**
    - Measure response times
    - Check token usage
    - Validate concurrent requests
 
+### Setup Requirements
+1. **Bootstrap Cloudant Databases** (First-time setup)
+   ```bash
+   cd cloudant-tools/scripts
+   python bootstrap_and_seed.py
+   ```
+   - Creates 8 Cloudant databases with indexes
+   - Seeds databases with data from `data/` JSON files
+   - Verifies Cloudant connection
+
+2. **Import Cloudant Connection**
+   ```bash
+   ./import-cloudant-connection.sh
+   ```
+
+3. **Deploy All Artifacts**
+   ```bash
+   ./import-all.sh
+   ```
+
 ### Optional Enhancements
-1. **Implement Guardrail Plugins** (see `docs/banking-demo-guardrail-validation.md`)
-2. **Add Additional Test Cases** (edge cases, error handling, multi-turn)
-3. **Create Presentation Materials** (slides, architecture diagrams)
-4. **Rehearse Demo** with all scenarios
+1. **Add Additional Test Cases** (edge cases, error handling, multi-turn)
+2. **Create Presentation Materials** (slides, architecture diagrams)
+3. **Rehearse Demo** with all scenarios
+4. **Performance benchmarking** with Cloudant metrics
 
 ## 📚 Additional Resources
 
 ### Documentation
 - [watsonx Orchestrate Documentation](https://www.ibm.com/docs/en/watsonx/watson-orchestrate)
 - [Agent Development Kit (ADK) Guide](https://developer.watson-orchestrate.ibm.com/)
-- [MCP Server Integration](https://modelcontextprotocol.io/)
+- [IBM Cloudant Documentation](https://cloud.ibm.com/docs/Cloudant)
 
 ### Project Documentation
+- [`ARCHITECTURE_DIAGRAM.md`](ARCHITECTURE_DIAGRAM.md) - System architecture with Cloudant databases
 - [`DEMO_ACCOUNTS.md`](DEMO_ACCOUNTS.md) - Customer credentials and demo scenarios
-- [`AUTHENTICATION_GUIDE.md`](AUTHENTICATION_GUIDE.md) - Authentication implementation details
-- [`AUTHENTICATION_ARCHITECTURE.md`](AUTHENTICATION_ARCHITECTURE.md) - Technical architecture
-- [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md) - Complete implementation summary
-- [`IMPLEMENTATION.md`](IMPLEMENTATION.md) - Detailed implementation notes
+- [`AUTHENTICATION_GUIDE.md`](AUTHENTICATION_GUIDE.md) - Cloudant-backed authentication details
+- [`AUTHENTICATION_ARCHITECTURE.md`](AUTHENTICATION_ARCHITECTURE.md) - Technical authentication architecture
+- [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md) - Complete implementation summary with Cloudant
+- [`IMPLEMENTATION.md`](IMPLEMENTATION.md) - Detailed implementation notes and Cloudant setup
 - [`TESTING_GUIDE.md`](TESTING_GUIDE.md) - Testing procedures and validation
 - [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) - Common issues and solutions
-- [`GUARDRAIL_DEMO_GUIDE.md`](GUARDRAIL_DEMO_GUIDE.md) - Guardrail demonstration guide
-- [`GUARDRAIL_BEFORE_AFTER_DEMO.md`](GUARDRAIL_BEFORE_AFTER_DEMO.md) - Before/after comparison
+- [`DEMO_GUIDE.md`](DEMO_GUIDE.md) - Comprehensive demo guide with guardrail scenarios and comparisons
 - [`GUARDRAILS_IMPLEMENTATION.md`](GUARDRAILS_IMPLEMENTATION.md) - Technical guardrail details
 - [`LOAN_APPROVAL_WORKFLOW.md`](LOAN_APPROVAL_WORKFLOW.md) - Workflow implementation guide
 - [`WORKFLOW_QUICK_START.md`](WORKFLOW_QUICK_START.md) - Quick start for workflows
 - [`QUICK_START_DEMO.md`](QUICK_START_DEMO.md) - Quick demo guide
 
 ### Deployment
-- [`import-all.sh`](import-all.sh) - Automated deployment script
+- [`import-all.sh`](import-all.sh) - Automated deployment script (agents, tools, guardrails)
+- [`import-cloudant-connection.sh`](import-cloudant-connection.sh) - Cloudant connection setup
+- [`cloudant-tools/scripts/bootstrap_and_seed.py`](cloudant-tools/scripts/bootstrap_and_seed.py) - Database bootstrap
 - [`requirements.txt`](requirements.txt) - Python dependencies
 
 ---
 
 **Project Status**: ✅ Implementation Complete - Ready for Demo Testing
-**Last Updated**: 2026-04-26
+**Last Updated**: 2026-05-05
 **Implementation By**: Bob (WXO Agent Architect)
 **Next Action**: Test demo scenarios in watsonx Orchestrate UI

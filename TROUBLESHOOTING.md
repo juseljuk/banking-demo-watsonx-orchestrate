@@ -2,7 +2,139 @@
 
 ## Common Issues and Solutions
 
-### 1. 500 Server Error During Toolkit Import
+### 1. Cloudant Connection Issues
+
+**Error Message:**
+```
+Failed to connect to Cloudant database
+Connection refused or authentication failed
+```
+
+**Cause:**
+- Cloudant credentials not configured
+- Connection not imported
+- Network connectivity issues
+
+**Solutions:**
+
+#### Solution A: Verify Cloudant Credentials
+```bash
+# Check if CLOUDANT_URL and CLOUDANT_APIKEY are set
+echo $CLOUDANT_URL
+echo $CLOUDANT_APIKEY
+
+# If not set, add to .env file or export
+export CLOUDANT_URL="your-cloudant-url"
+export CLOUDANT_APIKEY="your-api-key"
+```
+
+#### Solution B: Import Cloudant Connection
+```bash
+# Import connection configuration
+./import-cloudant-connection.sh
+
+# Verify connection exists
+orchestrate connections list | grep cloudant
+```
+
+#### Solution C: Test Cloudant Connection
+```bash
+# Run smoke tests
+cd cloudant-tools
+python tests_smoke.py
+```
+
+---
+
+### 2. Cloudant Databases Empty or Missing
+
+**Error Message:**
+```
+Database not found: banking_customers
+No documents found in database
+```
+
+**Cause:**
+- Databases not bootstrapped
+- Bootstrap script not run
+- Data seeding failed
+
+**Solutions:**
+
+#### Solution A: Run Bootstrap Script
+```bash
+cd cloudant-tools/scripts
+python bootstrap_and_seed.py
+
+# This will:
+# - Create 8 Cloudant databases
+# - Create indexes
+# - Seed data from data/ JSON files
+```
+
+#### Solution B: Verify Databases Exist
+```bash
+# Check if databases were created
+# Use Cloudant dashboard or API to verify:
+# - banking_customers
+# - banking_accounts
+# - banking_transactions
+# - banking_credit_reports
+# - banking_devices
+# - banking_fraud_cases
+# - banking_loan_applications
+# - banking_audit_logs
+```
+
+#### Solution C: Re-seed Data
+```bash
+cd cloudant-tools/scripts
+# Delete and recreate databases
+python bootstrap_and_seed.py --force
+```
+
+---
+
+### 3. Python Tool Import Failures
+
+**Error Message:**
+```
+Failed to import tool: authenticate_customer
+ModuleNotFoundError: No module named 'repositories'
+```
+
+**Cause:**
+- Missing Python dependencies
+- Incorrect import paths
+- Repository classes not found
+
+**Solutions:**
+
+#### Solution A: Install Dependencies
+```bash
+# Install all required packages
+pip install -r requirements.txt
+pip install -r cloudant-tools/requirements.txt
+```
+
+#### Solution B: Verify Repository Structure
+```bash
+# Check repository files exist
+ls -la cloudant-tools/repositories/
+# Should show: customers.py, accounts.py, transactions.py, etc.
+```
+
+#### Solution C: Import Tools Individually
+```bash
+# Import each tool module separately
+orchestrate tools import -k python -f cloudant-tools/core_banking_tools.py -r cloudant-tools/requirements.txt
+orchestrate tools import -k python -f cloudant-tools/fraud_detection_tools.py -r cloudant-tools/requirements.txt
+orchestrate tools import -k python -f cloudant-tools/loan_processing_tools.py -r cloudant-tools/requirements.txt
+```
+
+---
+
+### 4. 500 Server Error During Tool Import
 
 **Error Message:**
 ```
@@ -12,9 +144,9 @@ ClientAPIException(status_code=500, message={"detail":"An Unexpected Error Occur
 
 **Cause:**
 This is a server-side error that typically occurs when:
-- Removing and immediately reimporting a toolkit (server needs time to clean up)
+- Removing and immediately reimporting tools (server needs time to clean up)
 - Server is temporarily overloaded
-- Toolkit package has issues
+- Tool package has issues
 
 **Solutions:**
 
@@ -25,45 +157,30 @@ sleep 15
 ./import-all.sh
 ```
 
-#### Solution B: Import Toolkits Individually
+#### Solution B: Import Tools Individually
 ```bash
 # Import one at a time with delays
-orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml
+orchestrate tools import -k python -f cloudant-tools/core_banking_tools.py -r cloudant-tools/requirements.txt
 sleep 10
 
-orchestrate toolkits import -f toolkits/fraud-detection-toolkit.yaml
+orchestrate tools import -k python -f cloudant-tools/fraud_detection_tools.py -r cloudant-tools/requirements.txt
 sleep 10
 
-orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml
+orchestrate tools import -k python -f cloudant-tools/loan_processing_tools.py -r cloudant-tools/requirements.txt
 sleep 10
 ```
 
-#### Solution C: Skip Removal Step
-If toolkits don't exist yet, import without removing:
+#### Solution C: Check Tool Status
 ```bash
-# Comment out the removal logic in import-all.sh
-# Or manually import without checking for existing toolkits
-orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml
-```
+# List imported tools
+orchestrate tools list | grep -E "(authenticate|balance|fraud|loan)"
 
-#### Solution D: Manual Cleanup
-```bash
-# List existing toolkits
-orchestrate toolkits list
-
-# Remove problematic toolkit
-orchestrate toolkits remove -n loan-processing
-
-# Wait for cleanup
-sleep 15
-
-# Import fresh
-orchestrate toolkits import -f toolkits/loan-processing-toolkit.yaml
+# Should show 25 tools from 3 modules
 ```
 
 ---
 
-### 2. Plugin Validation Error
+### 5. Plugin Validation Error
 
 **Error Message:**
 ```
@@ -90,7 +207,7 @@ If you see this error, verify your agent YAML files use `plugin_name:` field.
 
 ---
 
-### 3. Authentication Token Expired
+### 6. Authentication Token Expired
 
 **Error Message:**
 ```
@@ -109,40 +226,42 @@ orchestrate env activate wxo-edu
 
 ---
 
-### 4. MCP Server Not Responding
+### 7. Tool Execution Failures
 
 **Error Message:**
 ```
-Tool execution failed: Connection refused
+Tool execution failed: Database query error
+Customer not found in database
 ```
 
 **Cause:**
-MCP server process hasn't started or crashed.
+- Cloudant database not seeded
+- Customer data missing
+- Repository query issues
 
 **Solution:**
 
-#### Check Toolkit Status
+#### Verify Data Exists
 ```bash
-orchestrate toolkits list
+# Run smoke tests to verify data
+cd cloudant-tools
+python tests_smoke.py
+
+# Should show:
+# ✓ Customer CUST-001 found
+# ✓ Accounts found
+# ✓ Transactions found
 ```
 
-#### Reimport Toolkit
+#### Re-seed Databases
 ```bash
-orchestrate toolkits remove -n core-banking
-sleep 10
-orchestrate toolkits import -f toolkits/core-banking-toolkit.yaml
-```
-
-#### Test MCP Server Locally
-```bash
-cd banking-demo/toolkits
-python3 core_banking_server.py
-# Should start without errors
+cd cloudant-tools/scripts
+python bootstrap_and_seed.py
 ```
 
 ---
 
-### 5. Guardrails Not Working
+### 8. Guardrails Not Working
 
 **Symptoms:**
 - PII not being redacted
@@ -175,7 +294,7 @@ orchestrate tools import -k python -f plugins/fraud_rules_guardrail.py
 
 ---
 
-### 6. Agent Import Fails
+### 9. Agent Import Fails
 
 **Error Message:**
 ```
@@ -192,11 +311,14 @@ python3 -c "import yaml; yaml.safe_load(open('agents/customer-service-agent.yaml
 
 #### Check Dependencies
 ```bash
-# Verify toolkits are imported first
-orchestrate toolkits list
+# Verify Python tools are imported (25 tools)
+orchestrate tools list | wc -l
 
-# Verify guardrails are imported
+# Verify guardrails are imported (4 guardrails)
 orchestrate tools list | grep guardrail
+
+# Verify Cloudant connection exists
+orchestrate connections list | grep cloudant
 ```
 
 #### Import Manually
@@ -206,27 +328,7 @@ orchestrate agents import -f agents/customer-service-agent.yaml
 
 ---
 
-### 7. Data Files Not Found
-
-**Error Message:**
-```
-FileNotFoundError: data/customers.json
-```
-
-**Solution:**
-```bash
-# Ensure data files are in correct location
-ls -la banking-demo/data/
-ls -la banking-demo/toolkits/data/
-
-# Copy data files if missing
-cd banking-demo
-cp -r data toolkits/data
-```
-
----
-
-### 8. Python Dependencies Missing
+### 10. Python Dependencies Missing
 
 **Error Message:**
 ```
@@ -257,19 +359,28 @@ orchestrate toolkits import -f toolkits/my-toolkit.yaml
 ```
 
 ### 2. Import in Correct Order
-1. MCP Toolkits first
-2. Guardrail plugins second
-3. Agents last
+1. Bootstrap Cloudant databases first
+2. Import Cloudant connection second
+3. Import Python tools third
+4. Import guardrail plugins fourth
+5. Import agents last
 
 ### 3. Verify Each Step
 ```bash
-# After importing toolkits
-orchestrate toolkits list
+# After bootstrapping Cloudant
+cd cloudant-tools
+python tests_smoke.py
 
-# After importing guardrails
+# After importing connection
+orchestrate connections list | grep cloudant
+
+# After importing tools (should show 25 tools)
+orchestrate tools list | wc -l
+
+# After importing guardrails (should show 4)
 orchestrate tools list | grep guardrail
 
-# After importing agents
+# After importing agents (should show 5)
 orchestrate agents list
 ```
 
@@ -304,14 +415,16 @@ orchestrate env show
 
 ### Test Components Individually
 ```bash
-# Test MCP server locally
-python3 toolkits/core_banking_server.py
+# Test Cloudant connection
+cd cloudant-tools
+python tests_smoke.py
 
 # Test guardrail logic
-python3 tests/test_guardrail_logic.py
+cd tests
+python test_guardrail_logic.py
 
-# Test authentication
-python3 toolkits/test_mcp_servers.py
+# Test workflow
+python test_loan_approval_workflow.py
 ```
 
 ---
@@ -321,23 +434,34 @@ python3 toolkits/test_mcp_servers.py
 If everything is broken and you want to start fresh:
 
 ```bash
-# 1. Remove all artifacts
-orchestrate toolkits remove -n core-banking
-orchestrate toolkits remove -n fraud-detection
-orchestrate toolkits remove -n loan-processing
+# 1. Bootstrap Cloudant databases
+cd banking-demo/cloudant-tools/scripts
+python bootstrap_and_seed.py
+cd ../..
 
+# 2. Remove all artifacts
 orchestrate agents remove --name customer_service_agent
 orchestrate agents remove --name loan_processing_agent
 orchestrate agents remove --name fraud_detection_agent
 orchestrate agents remove --name banking_orchestrator_agent
 orchestrate agents remove --name compliance_risk_agent
 
-# 2. Wait for cleanup
+# Remove tools (25 tools)
+orchestrate tools list | grep -E "(authenticate|balance|fraud|loan)" | while read tool; do
+    orchestrate tools remove -n "$tool"
+done
+
+# 3. Wait for cleanup
 sleep 15
 
-# 3. Reimport everything
-cd banking-demo
+# 4. Reimport everything
+./import-cloudant-connection.sh
 ./import-all.sh
+
+# 5. Verify
+orchestrate connections list | grep cloudant
+orchestrate tools list | wc -l  # Should show ~29 (25 tools + 4 guardrails)
+orchestrate agents list  # Should show 5 agents
 ```
 
 ---
@@ -347,4 +471,13 @@ cd banking-demo
 For issues not covered in this guide:
 - Check watsonx Orchestrate documentation
 - Review error logs with `--debug` flag
+- Test Cloudant connection with smoke tests
+- Verify bootstrap script completed successfully
+- Check IBM Cloudant dashboard for database status
 - Test components individually to isolate the problem
+
+---
+
+**Last Updated**: 2026-05-05
+**Architecture**: Cloudant-backed standalone Python tools
+**Key Components**: 8 Cloudant databases, 25 Python tools, 7 repositories, 4 guardrails, 5 agents

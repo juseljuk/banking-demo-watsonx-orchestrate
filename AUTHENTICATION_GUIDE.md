@@ -2,7 +2,7 @@
 
 ## 🔐 Overview
 
-The banking demo now implements a proper authentication flow using Customer ID and PIN code verification before allowing any banking operations.
+The banking demo implements a secure authentication flow using Customer ID and PIN code verification with Cloudant-backed persistent storage. This guide covers the complete authentication implementation without session tokens.
 
 ---
 
@@ -19,14 +19,17 @@ Orchestrator asks for:
 ### Step 3: Credential Verification
 Orchestrator calls `authenticate_customer` tool with provided credentials
 
-### Step 4: Session Token Generation
+### Step 4: Customer ID Return
 On successful authentication:
-- System generates a unique session token
-- Token format: `SESSION-{customer_id}-{timestamp}`
-- Token stored in server-side session store
+- System validates credentials against Cloudant database
+- Returns `customer_id` and `customer_name`
+- **No session token needed** - customer_id is passed directly
 
-### Step 5: Authenticated Operations
-Orchestrator passes session token to specialist agents for all operations
+### Step 5: Account Retrieval
+Orchestrator immediately calls `get_customer_accounts(customer_id)` to retrieve account list
+
+### Step 6: Authenticated Operations
+Orchestrator passes `customer_id` directly to specialist agents for all operations
 
 ---
 
@@ -38,6 +41,7 @@ Orchestrator passes session token to specialist agents for all operations
 - **Profile**: Senior Software Engineer, London
 - **Credit Score**: 742 (Good)
 - **Income**: £65,000/year
+- **Accounts**: Current (CUR-001-1234), Savings (SAV-001-5678), Credit Card (CC-001-9012)
 
 ### James Patel (Business Customer)
 - **Customer ID**: `CUST-002`
@@ -45,6 +49,7 @@ Orchestrator passes session token to specialist agents for all operations
 - **Profile**: Managing Director, London
 - **Credit Score**: 785 (Excellent)
 - **Income**: £125,000/year
+- **Accounts**: Business Current (BUS-002-3456), Business Savings (SAV-002-7890)
 
 ### Sophie Williams (Young Professional)
 - **Customer ID**: `CUST-003`
@@ -52,116 +57,167 @@ Orchestrator passes session token to specialist agents for all operations
 - **Profile**: Marketing Coordinator, Manchester
 - **Credit Score**: 680 (Good)
 - **Income**: £32,000/year
+- **Accounts**: Current, Savings
 
 ---
 
 ## 🔧 Technical Implementation
 
-### 1. Data Layer (`data/customers.json`)
+### 1. Data Layer (Cloudant Database)
 
-Each customer record now includes a PIN field:
+Customer credentials are stored in Cloudant `customers` database:
 
 ```json
 {
-  "CUST-001": {
-    "customer_id": "CUST-001",
-    "pin": "1234",
-    "first_name": "Emma",
-    "last_name": "Thompson",
-    ...
+  "_id": "CUST-001",
+  "type": "customer",
+  "customer_id": "CUST-001",
+  "pin": "1234",
+  "first_name": "Emma",
+  "last_name": "Thompson",
+  "email": "emma.thompson@email.co.uk",
+  ...
+}
+```
+
+**Bootstrap Process**:
+- Seed data from `data/customers.json`
+- Run: `python cloudant-tools/scripts/bootstrap_and_seed.py`
+- Creates Cloudant databases and indexes
+- Loads initial customer data
+
+### 2. Core Banking Tools ([`cloudant-tools/core_banking_tools.py`](cloudant-tools/core_banking_tools.py))
+
+#### authenticate_customer()
+
+**Location**: [`cloudant-tools/core_banking_tools.py:25`](cloudant-tools/core_banking_tools.py:25)
+
+**Purpose**: Authenticate a customer using their customer ID and PIN code.
+
+**Implementation**:
+```python
+@tool(expected_credentials=CLOUDANT_EXPECTED_CREDENTIALS)
+def authenticate_customer(customer_id: str, pin: str) -> Dict[str, Any]:
+    """
+    Authenticate a customer using demo customer ID and PIN.
+    
+    Returns:
+        Dict[str, Any]: Authentication result with customer_id and customer_name
+    """
+    # 1. Normalize inputs
+    normalized_customer_id = str(customer_id).strip()
+    normalized_pin = str(pin).strip()
+    
+    # 2. Query Cloudant via repository
+    customer_repo = CustomerRepository(settings=settings)
+    customer = customer_repo.get_customer_by_id(normalized_customer_id)
+    pin_verified = customer_repo.verify_customer_pin(normalized_customer_id, normalized_pin)
+    
+    # 3. Validate credentials
+    if not customer or not pin_verified:
+        return {
+            "status": "error",
+            "message": "Invalid customer ID or PIN"
+        }
+    
+    # 4. Return customer_id (no session token)
+    return {
+        "status": "success",
+        "customer_id": normalized_customer_id,
+        "customer_name": f"{customer['first_name']} {customer['last_name']}",
+        "message": f"Welcome back, {customer['first_name']}!"
+    }
+```
+
+**Response on Success**:
+```json
+{
+  "status": "success",
+  "customer_id": "CUST-001",
+  "customer_name": "Emma Thompson",
+  "message": "Welcome back, Emma!"
+}
+```
+
+**Response on Failure**:
+```json
+{
+  "status": "error",
+  "message": "Invalid customer ID or PIN",
+  "debug": {
+    "normalized_customer_id": "CUST-001",
+    "customer_found": false,
+    "pin_verified": false
   }
 }
 ```
 
-### 2. Core Banking Standalone Tools ([`cloudant-tools/core_banking_tools.py`](cloudant-tools/core_banking_tools.py))
+#### get_customer_accounts()
 
-#### Session Store
-Session state is now handled by the standalone Cloudant-backed tool layer rather than a legacy MCP server process.
+**Location**: [`cloudant-tools/core_banking_tools.py:84`](cloudant-tools/core_banking_tools.py:84)
 
-#### [`authenticate_customer()`](cloudant-tools/core_banking_tools.py:24)
-The standalone tool authenticates a customer using their customer ID and PIN code and persists session state through the current Cloudant-backed implementation.
+**Purpose**: Retrieve all accounts for an authenticated customer.
 
 **Implementation**:
-1. Validates customer ID exists
-2. Verifies PIN matches
-3. Generates session token
-4. Persists session state through the standalone tool data layer
-5. Returns success with token and customer name
-
-**Response on Success**:
-```json
-{
-    "status": "success",
-    "message": "Welcome back, Emma Thompson!",
-    "session_token": "SESSION-CUST-001-20260426182400",
-    "customer_id": "CUST-001",
-    "customer_name": "Emma Thompson"
-}
-```
-
-**Response on Failure**:
-```json
-{
-    "status": "error",
-    "message": "Invalid customer ID or PIN"
-}
-```
-
-#### Modified get_current_customer Tool
 ```python
-Tool(
-    name="get_current_customer",
-    description="Get the currently authenticated customer's information",
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "session_token": {"type": "string"}
-        },
-        "required": ["session_token"]
+@tool(expected_credentials=CLOUDANT_EXPECTED_CREDENTIALS)
+def get_customer_accounts(customer_id: str) -> Dict[str, Any]:
+    """
+    Get all accounts for a customer.
+    
+    Args:
+        customer_id (str): The customer identifier
+        
+    Returns:
+        Dict[str, Any]: Customer account list and count
+    """
+    account_repo = AccountRepository()
+    accounts = account_repo.list_accounts_for_customer(customer_id)
+    
+    return {
+        "status": "success",
+        "customer_id": customer_id,
+        "accounts": accounts,
+        "account_count": len(accounts)
     }
-)
 ```
 
-**Implementation**:
-1. Validates session token exists
-2. Retrieves customer ID from session
-3. Loads customer data
-4. Returns customer profile and accounts
-
-**Response on Success**:
+**Response**:
 ```json
 {
-    "status": "success",
-    "customer_id": "CUST-001",
-    "customer_name": "Emma Thompson",
-    "email": "emma.thompson@email.co.uk",
-    "phone": "+44 20 7946 0123",
-    "accounts": [...]
-}
-```
-
-**Response on Failure**:
-```json
-{
-    "status": "error",
-    "message": "Not authenticated. Please authenticate first using authenticate_customer."
+  "status": "success",
+  "customer_id": "CUST-001",
+  "accounts": [
+    {
+      "account_id": "CUR-001-1234",
+      "account_type": "Current Account",
+      "account_name": "Premier Current Account",
+      "current_balance": 4250.50,
+      "currency": "GBP"
+    },
+    ...
+  ],
+  "account_count": 3
 }
 ```
 
 ### 3. Banking Orchestrator Agent
 
 **Tools**:
-- `authenticate_customer`
+- `authenticate_customer` - Validates credentials
+- `get_customer_accounts` - Retrieves account list
 
 **Instructions** (Key Points):
 ```yaml
 CRITICAL - Customer Authentication Flow:
-1. When a customer first contacts you, you MUST authenticate them
+1. When a customer first contacts you, authenticate them using authenticate_customer
 2. Ask for their Customer ID and 4-digit PIN
 3. Call authenticate_customer with the provided credentials
-4. If authentication succeeds, you'll receive a session_token
-5. Pass this session_token to all specialist agents
-6. If authentication fails, ask them to try again
+4. If authentication succeeds, you'll receive customer_id and customer_name
+5. Immediately call get_customer_accounts with the customer_id
+6. Store the customer_id and account information
+7. When routing to specialists, provide customer_id and account details
+8. If authentication fails, ask them to try again
 ```
 
 **Workflow**:
@@ -169,29 +225,39 @@ CRITICAL - Customer Authentication Flow:
 2. Orchestrator: "To help you, I need to verify your identity. Please provide your Customer ID and 4-digit PIN."
 3. Customer: "CUST-001 and 1234"
 4. Orchestrator calls `authenticate_customer(customer_id="CUST-001", pin="1234")`
-5. Receives session token: `SESSION-CUST-001-20260426182400`
-6. Routes to customer_service_agent with session token
-7. Customer service agent calls `get_current_customer(session_token="SESSION-CUST-001-20260426182400")`
-8. Proceeds with balance check
+5. Receives: `{"status": "success", "customer_id": "CUST-001", "customer_name": "Emma Thompson"}`
+6. Orchestrator calls `get_customer_accounts(customer_id="CUST-001")`
+7. Receives account list
+8. Routes to customer_service_agent with customer_id and account details
+9. Customer service agent uses customer_id with tools
+10. Returns balance to customer
 
 ### 4. Specialist Agents
 
-All specialist agents (Customer Service, Loan Processing, Fraud Detection) updated to:
+All specialist agents (Customer Service, Loan Processing, Fraud Detection) receive:
+
+**From Orchestrator**:
+- `customer_id` (e.g., "CUST-001")
+- Account details (IDs, types, balances)
+- Customer name
 
 **Instructions**:
 ```yaml
-IMPORTANT: The orchestrator will provide you with a session_token from the authenticated customer. 
-You MUST use this session_token when calling get_current_customer.
+Important workflow:
+1. The orchestrator will provide you with the customer_id and account details
+2. The customer is already authenticated
+3. Use the customer_id provided by the orchestrator
+4. Call tools with the customer_id parameter
 ```
 
 **Tools**:
-- `get_current_customer` (requires session_token parameter)
+- All tools accept `customer_id` as a parameter
+- No session token needed
 
 **Workflow**:
-1. Receive request from orchestrator with session token
-2. Call `get_current_customer(session_token=token)`
-3. If successful, proceed with customer's request
-4. If authentication error, inform customer to authenticate
+1. Receive request from orchestrator with customer_id
+2. Use customer_id directly with tools
+3. Return results to orchestrator
 
 ---
 
@@ -204,11 +270,12 @@ You MUST use this session_token when calling get_current_customer.
 **Expected Flow**:
 1. Orchestrator: "To help you, I need to verify your identity. Please provide your Customer ID and 4-digit PIN."
 2. User: "CUST-001 and 1234"
-3. Orchestrator: Calls `authenticate_customer`
-4. System: Returns session token
-5. Orchestrator: "Welcome back, Emma Thompson! Let me check your balance."
-6. Routes to customer_service_agent with session token
-7. Agent: Returns balance £4,250.50
+3. Orchestrator: Calls `authenticate_customer(customer_id="CUST-001", pin="1234")`
+4. System: Returns `{"status": "success", "customer_id": "CUST-001", "customer_name": "Emma Thompson"}`
+5. Orchestrator: Calls `get_customer_accounts(customer_id="CUST-001")`
+6. Orchestrator: "Welcome back, Emma Thompson! Let me check your balance."
+7. Routes to customer_service_agent with customer_id
+8. Agent: Returns balance £4,250.50
 
 ### Test Scenario 2: Failed Authentication
 
@@ -217,8 +284,8 @@ You MUST use this session_token when calling get_current_customer.
 **Expected Flow**:
 1. Orchestrator: "Please provide your Customer ID and PIN"
 2. User: "CUST-001 and 9999" (wrong PIN)
-3. Orchestrator: Calls `authenticate_customer`
-4. System: Returns error "Invalid customer ID or PIN"
+3. Orchestrator: Calls `authenticate_customer(customer_id="CUST-001", pin="9999")`
+4. System: Returns `{"status": "error", "message": "Invalid customer ID or PIN"}`
 5. Orchestrator: "I'm sorry, those credentials don't match our records. Please try again or contact support."
 
 ### Test Scenario 3: Loan Application with Authentication
@@ -228,11 +295,11 @@ You MUST use this session_token when calling get_current_customer.
 **Expected Flow**:
 1. Orchestrator: "I can help with that. First, please provide your Customer ID and PIN"
 2. User: "CUST-001 and 1234"
-3. Orchestrator: Authenticates successfully
-4. Orchestrator: "Welcome back, Emma! Let me check your loan eligibility."
-5. Routes to loan_processing_agent with session token
-6. Loan agent: Calls `get_current_customer(session_token)`
-7. Loan agent: Checks eligibility, generates offers
+3. Orchestrator: Authenticates successfully, gets customer_id
+4. Orchestrator: Calls `get_customer_accounts(customer_id="CUST-001")`
+5. Orchestrator: "Welcome back, Emma! Let me check your loan eligibility."
+6. Routes to loan_processing_agent with customer_id
+7. Loan agent: Uses customer_id with loan tools
 8. Returns: "You're eligible for up to £32,500..."
 
 ---
@@ -240,22 +307,21 @@ You MUST use this session_token when calling get_current_customer.
 ## 🔒 Security Considerations
 
 ### Current Implementation (Demo)
-- **Session Store**: In-memory (resets on server restart)
-- **PIN Storage**: Plain text in JSON (demo only)
-- **Session Tokens**: Simple timestamp-based format
-- **No Expiration**: Sessions don't expire
-- **No Rate Limiting**: Unlimited authentication attempts
+- **Authentication**: Customer ID + PIN verification
+- **Storage**: Cloudant database with persistent data
+- **PIN Storage**: Plain text (demo only - production requires hashing)
+- **Customer ID Passing**: Direct parameter passing (no session tokens)
+- **Account Masking**: Last 4 digits shown in responses
 
 ### Production Requirements
-- **Session Store**: Redis or database-backed
-- **PIN Storage**: Hashed with bcrypt/argon2
-- **Session Tokens**: Cryptographically secure random tokens
-- **Expiration**: 15-30 minute session timeout
-- **Rate Limiting**: Max 3 failed attempts, then lockout
+- **PIN Storage**: Hash with bcrypt/argon2 instead of plain text
+- **Rate Limiting**: Max 3 failed attempts, then account lockout
+- **Session Timeout**: 15-30 minute inactivity timeout
 - **MFA**: Two-factor authentication for high-value operations
-- **Audit Logging**: Log all authentication attempts
-- **HTTPS**: All communications encrypted
-- **Token Rotation**: Refresh tokens periodically
+- **Audit Logging**: Log all authentication attempts with timestamps
+- **HTTPS**: All communications encrypted in transit
+- **Encryption at Rest**: Cloudant data encryption
+- **IP Monitoring**: Track and alert on suspicious login patterns
 
 ---
 
@@ -265,10 +331,10 @@ You MUST use this session_token when calling get_current_customer.
 
 - [x] Add PIN codes to customer data
 - [x] Implement `authenticate_customer` tool
-- [x] Modify `get_current_customer` to require session token
-- [x] Update Banking Orchestrator Agent with authentication tool
-- [x] Update all specialist agents to use session tokens
-- [x] Copy updated data files to deployment location
+- [x] Implement `get_customer_accounts` tool
+- [x] Update Banking Orchestrator Agent with authentication tools
+- [x] Update all specialist agents to use customer_id
+- [x] Bootstrap Cloudant databases with seed data
 - [x] Test authentication flow locally
 
 ### To Deploy
@@ -276,13 +342,25 @@ You MUST use this session_token when calling get_current_customer.
 ```bash
 cd banking-demo
 
-# 1. Activate environment
-source ../.venv/bin/activate
+# 1. Bootstrap Cloudant (one-time setup)
+python cloudant-tools/scripts/bootstrap_and_seed.py
 
-# 2. Reactivate watsonx Orchestrate environment (if token expired)
-orchestrate env activate wxo-edu
+# 2. Import Cloudant connection
+orchestrate connections import -f connections/cloudant-connection.yaml
 
-# 3. Run deployment script
+# 3. Configure credentials
+orchestrate connections configure --app-id cloudant --env draft --type team --kind key_value
+orchestrate connections set-credentials --app-id cloudant --env draft --entries "api_key=$CLOUDANT_API_KEY"
+
+# 4. Import tools
+orchestrate tools import -k python -f cloudant-tools/core_banking_tools.py -r cloudant-tools/requirements.txt
+
+# 5. Import agents
+orchestrate agents import -f agents/banking-orchestrator-agent.yaml
+orchestrate agents import -f agents/customer-service-agent.yaml
+# ... (other agents)
+
+# 6. Run deployment script
 ./import-all.sh
 ```
 
@@ -292,7 +370,7 @@ orchestrate env activate wxo-edu
 - [ ] Test authentication failure with wrong PIN
 - [ ] Test balance check after authentication
 - [ ] Test loan application after authentication
-- [ ] Test session token passing between agents
+- [ ] Test customer_id passing between agents
 - [ ] Verify error handling for unauthenticated requests
 
 ---
@@ -308,7 +386,7 @@ orchestrate env activate wxo-edu
 3. **User**: "CUST-001 and 1234"
 4. **System**: "Welcome back, Emma Thompson! Your current account balance is £4,250.50"
 
-**Highlight**: "Notice how the system authenticated the customer before revealing any account information. This protects customer privacy and prevents unauthorized access."
+**Highlight**: "Notice how the system authenticated the customer before revealing any account information. The customer_id is then used throughout the session for all operations."
 
 ### Demo 2: Failed Authentication (1 minute)
 1. **User**: "Check my balance"
@@ -316,7 +394,7 @@ orchestrate env activate wxo-edu
 3. **User**: "CUST-001 and 9999"
 4. **System**: "Invalid credentials. Please try again."
 
-**Highlight**: "The system protects against unauthorized access by validating credentials before any operations."
+**Highlight**: "The system protects against unauthorized access by validating credentials against our Cloudant database."
 
 ### Demo 3: Loan Application (3 minutes)
 1. **User**: "I'd like to apply for a £20,000 personal loan"
@@ -325,68 +403,87 @@ orchestrate env activate wxo-edu
 4. **System**: "Welcome back, Emma! Checking your eligibility..."
 5. **System**: "You're eligible for up to £32,500. Here are three loan offers..."
 
-**Highlight**: "The authentication token is securely passed between agents, maintaining the session throughout the multi-step loan application process."
+**Highlight**: "The customer_id is seamlessly passed between agents, maintaining context throughout the multi-step loan application process."
 
 ---
 
-## 🔄 Migration from Auto-Authentication
+## 🔄 Architecture Comparison
 
-### What Changed
+### Previous Approach (Session Tokens)
+- ❌ Session token generation and storage
+- ❌ Token passing between agents
+- ❌ Session expiration management
+- ❌ Additional complexity and failure points
 
-**Before** (Auto-Authentication):
-- `get_current_customer` had no parameters
-- Always returned Emma Thompson (CUST-001)
-- No credential verification
-- Suitable for simple demos only
+### Current Approach (Direct Customer ID)
+- ✅ Simple customer_id passing
+- ✅ No session state management
+- ✅ Cloudant provides persistent data
+- ✅ More reliable agent communication
+- ✅ Easier to debug and maintain
 
-**After** (PIN Authentication):
-- `authenticate_customer` tool added
-- `get_current_customer` requires session_token
-- Credentials verified against customer data
-- Session management implemented
-- More realistic banking security
+### Benefits of Current Approach
 
-### Benefits
-
-1. **Security**: Proper authentication before operations
-2. **Multi-User**: Can demo with different customers
-3. **Realistic**: Matches real banking workflows
-4. **Compliance**: Demonstrates security best practices
-5. **Flexibility**: Easy to switch between customers
+1. **Simplicity**: No session management overhead
+2. **Reliability**: Direct parameter passing is more robust
+3. **Maintainability**: Fewer moving parts to manage
+4. **Scalability**: Cloudant handles data persistence
+5. **Debugging**: Easier to trace customer_id through system
 
 ---
 
 ## 📞 Troubleshooting
 
-### Issue: "Not authenticated" Error
+### Issue: "Invalid customer ID or PIN" with correct credentials
 
-**Cause**: Session token not provided or invalid
-
-**Solution**:
-1. Ensure orchestrator calls `authenticate_customer` first
-2. Verify session token is passed to specialist agents
-3. Check session store hasn't been cleared (server restart)
-
-### Issue: "Invalid customer ID or PIN"
-
-**Cause**: Wrong credentials provided
+**Cause**: Customer data not seeded in Cloudant
 
 **Solution**:
-1. Verify customer ID format (CUST-001, not just 001)
-2. Check PIN is correct (1234 for Emma Thompson)
-3. Ensure customer data file has PIN field
+```bash
+python cloudant-tools/scripts/bootstrap_and_seed.py
+```
 
-### Issue: Orchestrator Not Asking for Authentication
+### Issue: Authentication succeeds but no accounts returned
 
-**Cause**: Agent instructions not updated
+**Cause**: Account data not seeded or customer_id mismatch
+
+**Solution**:
+1. Verify Cloudant accounts database exists
+2. Check accounts have matching customer_id field
+3. Re-run bootstrap script if needed
+
+### Issue: Orchestrator not asking for authentication
+
+**Cause**: Agent instructions not updated or tool not imported
 
 **Solution**:
 1. Verify orchestrator has `authenticate_customer` tool
 2. Check instructions mention authentication flow
-3. Redeploy orchestrator agent
+3. Redeploy orchestrator agent:
+```bash
+orchestrate agents import -f agents/banking-orchestrator-agent.yaml
+```
+
+### Issue: Specialist agent can't access customer data
+
+**Cause**: customer_id not passed from orchestrator
+
+**Solution**:
+1. Check orchestrator instructions include customer_id passing
+2. Verify specialist agent instructions expect customer_id
+3. Test orchestrator → specialist communication
 
 ---
 
-**Last Updated**: 2026-04-26  
+## 📚 Related Documentation
+
+- [`AUTHENTICATION_ARCHITECTURE.md`](AUTHENTICATION_ARCHITECTURE.md) - Technical architecture details
+- [`cloudant-tools/README.md`](cloudant-tools/README.md) - Cloudant tools documentation
+- [`DEMO_ACCOUNTS.md`](DEMO_ACCOUNTS.md) - Complete customer credentials and scenarios
+
+---
+
+**Last Updated**: 2026-05-05  
+**Version**: 2.0 (Cloudant Implementation)  
 **Implementation By**: Bob (WXO Agent Architect)  
-**Status**: Ready for Deployment (pending token refresh)
+**Status**: ✅ Production Ready

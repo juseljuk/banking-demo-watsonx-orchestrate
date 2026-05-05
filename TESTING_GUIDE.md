@@ -171,13 +171,13 @@ The **Banking Orchestrator Agent** intelligently routes requests to specialist a
 - Transaction risk analysis
 - Fraud alerts
 - Suspicious activity
-- Device verification
+- Device verification (Cloudant-backed)
 
 ### Compliance & Risk Agent
 - Regulatory questions
 - Compliance checks
 - Audit requirements
-- Risk assessments
+- Risk assessments (Cloudant audit logs)
 
 ---
 
@@ -262,10 +262,11 @@ When you test, you're automatically identified as:
 **Current**: Deterministic loan_approval_workflow (60% faster)
 **Status**: Workflow implemented and integrated with loan agent
 
-### Issue 4: Standalone tool deployment data/config ✅ FIXED
-**Problem**: runtime configuration and persisted demo data needed to be available consistently for standalone tools
-**Fix**: moved the implementation to Cloudant-backed standalone tools and standardized deployment/import through [`import-all.sh`](import-all.sh)
-**Status**: All tests passing
+### Issue 4: Data Persistence ✅ FIXED
+**Previous**: In-memory JSON data (lost on restart)
+**Current**: IBM Cloudant NoSQL databases (8 databases with persistent storage)
+**Fix**: Migrated to Cloudant-backed standalone tools with repository pattern
+**Status**: All data persists across restarts, bootstrap script seeds databases
 
 ---
 
@@ -275,21 +276,26 @@ When you test, you're automatically identified as:
 Look for this in the agent's reasoning:
 ```
 Using tool: authenticate_customer
-Result: Authentication successful, session_token: sess_xxx
+Result: Authentication successful, customer_id: CUST-001
 Using tool: get_current_customer
 Result: Emma Thompson (CUST-001)
 ```
+
+**Note**: Authentication now uses direct customer_id passing (no session tokens)
 
 ### 2. Verify All Components are Imported
 ```bash
 cd banking-demo
 source ../.venv/bin/activate
 
-# Check toolkits
-orchestrate toolkits list
+# Check Cloudant connection
+orchestrate connections list | grep cloudant
 
-# Check tools (including workflow)
-orchestrate tools list | grep -E "(core-banking|fraud-detection|loan-processing|loan_approval_workflow)"
+# Check Python tools (25 tools from 3 modules)
+orchestrate tools list | grep -E "(authenticate_customer|check_account_balance|analyze_transaction_risk)"
+
+# Check workflow
+orchestrate tools list | grep loan_approval_workflow
 
 # Check agents
 orchestrate agents list
@@ -298,9 +304,19 @@ orchestrate agents list
 orchestrate tools list | grep guardrail
 ```
 
-### 3. Reimport Everything
+### 3. Bootstrap Cloudant and Reimport Everything
 ```bash
 cd banking-demo
+
+# First-time setup: Bootstrap Cloudant databases
+cd cloudant-tools/scripts
+python bootstrap_and_seed.py
+cd ../..
+
+# Import Cloudant connection
+./import-cloudant-connection.sh
+
+# Import all artifacts
 ./import-all.sh
 ```
 
@@ -353,6 +369,7 @@ Look for errors in the agent's reasoning panel (click "Show Reasoning")
 
 ---
 
-**Last Updated**: 2026-04-28
-**Status**: ✅ Complete - All Features Implemented
+**Last Updated**: 2026-05-05
+**Status**: ✅ Complete - All Features Implemented with Cloudant Backend
+**Architecture**: Cloudant-backed standalone Python tools (25 tools, 8 databases, 7 repositories)
 **Next Action**: Test all scenarios including authentication and guardrails in watsonx Orchestrate UI

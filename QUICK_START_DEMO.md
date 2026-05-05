@@ -2,21 +2,41 @@
 
 ## 🚀 5-Minute Setup
 
-### 1. Deploy Everything
+### 1. Bootstrap Cloudant Databases (First Time Only)
 ```bash
 cd banking-demo
 source ../.venv/bin/activate
 orchestrate env activate wxo-edu
 
-# Deploy all components (MCP servers, agents WITH guardrails, plugins)
+# Bootstrap Cloudant: Create databases, indexes, and seed data
+cd cloudant-tools
+python3 scripts/bootstrap_and_seed.py
+cd ..
+
+# Verify Cloudant setup
+orchestrate connections list | grep cloudant
+```
+
+### 2. Deploy Everything
+```bash
+# Import Cloudant connection
+./import-cloudant-connection.sh
+
+# Deploy all components (Python tools, agents WITH guardrails, plugins)
 ./import-all.sh
 
 # Deploy "no guardrails" versions for before/after demo
 ./import-no-guardrails.sh
 ```
 
-### 2. Verify Deployment
+### 3. Verify Deployment
 ```bash
+# Check Cloudant connection
+orchestrate connections list | grep cloudant
+
+# Check Python tools (25 tools from 3 modules)
+orchestrate tools list | grep -E "authenticate_customer|check_account_balance|analyze_transaction_risk|check_credit_score"
+
 # Check agents
 orchestrate agents list | grep -E "(customer_service|loan_processing)"
 
@@ -191,6 +211,28 @@ Result: Transfer blocked (95/100 risk score) ✅
 
 ## 🔧 Troubleshooting
 
+### Cloudant connection issues
+```bash
+# Verify Cloudant connection exists
+orchestrate connections list | grep cloudant
+
+# Re-import connection if needed
+./import-cloudant-connection.sh
+
+# Test Cloudant connectivity
+cd cloudant-tools
+python3 tests_smoke.py
+cd ..
+```
+
+### Cloudant databases empty
+```bash
+# Re-run bootstrap to seed databases
+cd cloudant-tools
+python3 scripts/bootstrap_and_seed.py
+cd ..
+```
+
 ### Agents not found
 ```bash
 # Re-import agents
@@ -211,30 +253,38 @@ orchestrate tools import -k python -f plugins/lending_compliance_guardrail.py
 orchestrate tools import -k python -f plugins/fraud_rules_guardrail.py
 ```
 
-### Standalone tools not available yet
+### Python tools not available
 ```bash
-# Check imported tools
+# Check imported tools (should show 25 tools)
 orchestrate tools list | grep -E "authenticate_customer|check_account_balance|analyze_transaction_risk|check_credit_score"
 
-# Re-import the standalone tool modules if needed
-./import-all.sh
+# Re-import the Python tool modules if needed
+orchestrate tools import -k python -f cloudant-tools/core_banking_tools.py -r cloudant-tools/requirements.txt
+orchestrate tools import -k python -f cloudant-tools/fraud_detection_tools.py -r cloudant-tools/requirements.txt
+orchestrate tools import -k python -f cloudant-tools/loan_processing_tools.py -r cloudant-tools/requirements.txt
 ```
 
 ---
 
 ## ⚠️ Important Notes
 
-1. **Never use "no-guardrails" agents in production** - They are for demonstration only
-2. **Always authenticate first** - Use `CUST-001 and 1234` to start
-3. **Test locally first** - Run `python3 tests/test_guardrail_logic.py` to verify
-4. **Monitor guardrail effectiveness** - Check logs for blocked transactions
+1. **Bootstrap Cloudant first** - Run `python3 cloudant-tools/scripts/bootstrap_and_seed.py` before first use
+2. **Never use "no-guardrails" agents in production** - They are for demonstration only
+3. **Always authenticate first** - Use `CUST-001 and 1234` to start
+4. **Test locally first** - Run `python3 tests/test_guardrail_logic.py` to verify
+5. **Monitor guardrail effectiveness** - Check logs for blocked transactions
+6. **Cloudant credentials** - Ensure Cloudant connection is configured with valid credentials
 
 ---
 
 ## 🎬 Demo Checklist
 
+- [ ] Bootstrap Cloudant databases (`python3 cloudant-tools/scripts/bootstrap_and_seed.py`)
+- [ ] Import Cloudant connection (`./import-cloudant-connection.sh`)
 - [ ] Deploy all components (`./import-all.sh`)
 - [ ] Deploy no-guardrails versions (`./import-no-guardrails.sh`)
+- [ ] Verify Cloudant connection is active
+- [ ] Verify Python tools are imported (25 tools)
 - [ ] Verify agents are accessible
 - [ ] Test authentication (CUST-001 / 1234)
 - [ ] Prepare demo scenarios
